@@ -45,7 +45,7 @@ async function main(){
   );
 
   const text = reminders[Math.floor(Math.random() * reminders.length)];
-  const payload = JSON.stringify({ title: 'DaianaLife', body: text });
+  const payload = JSON.stringify({ title: '💧', body: text });
 
   try {
     await webpush.sendNotification(state.subscription, payload);
