@@ -40,29 +40,38 @@ arquivos, perto do trecho que ele descreve.
 
 ## Como o push de verdade funciona
 
-Não tem servidor rodando 24h — quem faz esse papel é o próprio
-GitHub, de duas formas:
+Não tem servidor rodando 24h — é uma combinação de três peças:
 
-1. **App → GitHub**: quando ela ativa notificação, o navegador gera
-   uma "inscrição" de push (via `PushManager`). O app grava essa
-   inscrição direto em `data/subscription.json` deste repositório,
-   usando a API do GitHub — o token pra isso fica embutido no
-   `index.html` (constante `GITHUB_TOKEN`), com permissão só de
-   **Contents: Read and write** *neste repositório*. Esse token
-   precisa continuar válido — não revogar.
-2. **GitHub → ela**: o workflow `.github/workflows/push-reminder.yml`
-   roda a cada 15 minutos, olha `data/subscription.json`, e se já
-   passou do horário do próximo lembrete, manda a notificação via
-   protocolo Web Push (biblioteca `web-push`) usando um par de chaves
-   VAPID guardado como *secret* do repositório.
+1. **App → Worker**: quando ela ativa notificação, o navegador gera
+   uma "inscrição" de push (via `PushManager`). O app manda essa
+   inscrição pra um Cloudflare Worker pequeno (`daianalife-push-relay`,
+   código em `../daianalife-worker/worker.js`), via `fetch` simples,
+   sem nenhuma credencial no app.
+2. **Worker → GitHub**: é o Worker quem tem o token de verdade
+   (guardado como *secret* só dele, na Cloudflare) e grava a
+   inscrição em `data/subscription.json` neste repositório.
+3. **GitHub → ela**: o workflow `.github/workflows/push-reminder.yml`
+   roda a cada 15 minutos, olha esse arquivo, e se já passou do
+   horário do próximo lembrete, manda a notificação via protocolo Web
+   Push (biblioteca `web-push`) usando um par de chaves VAPID guardado
+   como *secret* do repositório.
 
-### Segredos necessários (Settings → Secrets and variables → Actions)
-- `VAPID_PUBLIC_KEY`
-- `VAPID_PRIVATE_KEY`
+### Por que existe um Worker, se o objetivo era ficar só no GitHub?
+Tentamos embutir o token direto no `index.html` primeiro. Não deu:
+**o GitHub revoga automaticamente qualquer token dele encontrado num
+repositório público** — é uma proteção de segurança deles, aconteceu
+de novo a cada tentativa. Como GitHub Pages em repositório privado
+exige o plano Pro (pago), a única forma gratuita de guardar esse
+token com segurança é fora do repositório público — daí o Worker, que
+existe só pra isso, nada mais.
 
-Essas chaves já foram geradas; a pública também está hardcoded no
-`index.html` (`VAPID_PUBLIC_KEY`, sem problema ela ser pública). A
-privada NUNCA deve entrar no código — só como secret do Actions.
+### Segredos necessários
+- **Repositório GitHub** (Settings → Secrets and variables → Actions): `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
+- **Cloudflare Worker** (Settings → Variables and Secrets): `GITHUB_TOKEN` (fine-grained, Contents: Read and write, só neste repositório)
+
+A chave pública VAPID também está hardcoded no `index.html`
+(`VAPID_PUBLIC_KEY`) — sem problema ela ser pública. As privadas
+NUNCA devem entrar em código, só nesses dois lugares de secret.
 
 ### Limitações honestas
 - Precisão de ±15 minutos (intervalo do cron), não é no segundo exato.

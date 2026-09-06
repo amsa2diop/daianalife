@@ -785,20 +785,15 @@
   const STORAGE_KEY = 'daianalife_state_v1';
 
   // CONFIGURAÇÃO DO PUSH DE VERDADE
-  // GITHUB_TOKEN é um fine-grained personal access token com permissão
-  // "Contents: Read and write" só neste repositório — fica embutido
-  // aqui de propósito, pra o próprio navegador dela conseguir gravar
-  // sua inscrição de push em data/subscription.json (não existe
-  // servidor nesse projeto, então é o próprio GitHub que guarda esse
-  // estado). Isso significa que o token fica visível pra quem abrir o
-  // código-fonte da página — o risco é limitado a esse repositório
-  // específico, mas é um token que precisa continuar válido: não
-  // revogar, ao contrário do token usado só pra dar `git push` uma
-  // vez. Ver README.md para o passo a passo completo.
-  const GITHUB_OWNER = 'amsa2diop';
-  const GITHUB_REPO = 'daianalife';
-  const GITHUB_TOKEN = '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';
-  const SUB_FILE_PATH = 'data/subscription.json';
+  // Não existe token do GitHub aqui de propósito: o GitHub revoga
+  // automaticamente qualquer token dele encontrado num repositório
+  // público (proteção de segurança deles, não um bug nosso — testamos
+  // e confirmamos isso na prática). Por isso a gravação da inscrição
+  // passa por um Cloudflare Worker pequeno (ver /daianalife-worker no
+  // projeto), que guarda o token de verdade como variável secreta,
+  // fora do código público, e escreve em data/subscription.json em
+  // nome do app.
+  const PUSH_RELAY_URL = 'https://daianalife-push-relay.varafd.workers.dev';
   const VAPID_PUBLIC_KEY = 'BCYB8HCsr6lq2Y5MfuQg2Fk2F4fgIN7SDJ1TaEt2BxF0n595CimPub5u65YOEeisb9smJDQlQrKN1wlFARsZEN0';
 
   // Mensagens que aparecem sozinhas de tempos em tempos (troca a cada
@@ -837,6 +832,7 @@
     s.cups = s.cups ?? 0;
     s.goal = s.goal ?? 8;
     s.interval = s.interval ?? 60;
+    s.pushSynced = s.pushSynced ?? false;
     s.nextReminder = s.nextReminder ?? (Date.now() + s.interval*60000);
     return s;
   }
@@ -904,7 +900,7 @@
     render();
     celebrate();
     if('Notification' in window && Notification.permission === 'granted'){
-      syncRemote({ nextReminder: state.nextReminder });
+      syncRemote({ nextReminder: state.nextReminder }).catch(()=>{});
     }
   });
 
@@ -915,7 +911,7 @@
       save();
       render();
       if('Notification' in window && Notification.permission === 'granted'){
-        syncRemote({ interval: state.interval, nextReminder: state.nextReminder });
+        syncRemote({ interval: state.interval, nextReminder: state.nextReminder }).catch(()=>{});
       }
     });
   });
@@ -981,9 +977,13 @@
       els.notifText.textContent = 'Pra ativar notificação, primeiro adiciona o app à tela de início (Compartilhar → Adicionar à Tela de Início). Depois é só voltar aqui.';
       return;
     }
-    if(Notification.permission === 'granted'){
+    if(Notification.permission === 'granted' && state.pushSynced){
       els.notifBtn.textContent = 'ativado';
       els.notifBtn.classList.add('on');
+    } else if(Notification.permission === 'granted' && !state.pushSynced){
+      els.notifBtn.textContent = 'toca aqui';
+      els.notifBtn.classList.remove('on');
+      els.notifText.textContent = 'Falta só um toque: a permissão já existe, mas ainda falta registrar de vez.';
     } else if (Notification.permission === 'denied') {
       els.notifBtn.textContent = 'bloqueado';
       els.notifText.textContent = 'As notificações foram bloqueadas pro app. Dá pra reativar nos Ajustes do iPhone, em Notificações > DaianaLife.';
@@ -1003,40 +1003,24 @@
     return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
   }
 
-  // SINCRONIA COM O GITHUB
+  // SINCRONIA COM O GITHUB (via Worker)
   // data/subscription.json no repositório é o único lugar onde a
   // inscrição de push sobrevive fora deste navegador — é lá que o
   // workflow do GitHub Actions vai ler pra saber pra quem, e quando,
-  // mandar o lembrete de verdade.
-  async function githubReadSub(){
-    const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${SUB_FILE_PATH}`, {
-      headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github+json' }
-    });
-    if(!res.ok) throw new Error('Falha ao ler subscription.json: ' + res.status);
-    const data = await res.json();
-    return { content: JSON.parse(decodeURIComponent(escape(atob(data.content)))), sha: data.sha };
-  }
-
-  async function githubWriteSub(obj, sha){
-    const body = {
-      message: 'app: atualiza inscrição de push',
-      content: btoa(unescape(encodeURIComponent(JSON.stringify(obj, null, 2) + '\n'))),
-      sha
-    };
-    const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${SUB_FILE_PATH}`, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github+json' },
-      body: JSON.stringify(body)
-    });
-    if(!res.ok) throw new Error('Falha ao gravar subscription.json: ' + res.status);
-  }
-
+  // mandar o lembrete de verdade. Quem escreve lá não é este app
+  // diretamente (não temos token aqui) — é o Worker, que guarda o
+  // segredo do lado dele.
   async function syncRemote(patch){
     try{
-      const { content, sha } = await githubReadSub();
-      await githubWriteSub({ ...content, ...patch }, sha);
+      const res = await fetch(PUSH_RELAY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch)
+      });
+      if(!res.ok) throw new Error('Worker respondeu ' + res.status);
     }catch(err){
-      console.warn('Não consegui sincronizar com o GitHub agora:', err);
+      console.warn('Não consegui sincronizar agora:', err);
+      throw err;
     }
   }
 
@@ -1063,7 +1047,10 @@
         interval: state.interval,
         nextReminder: Date.now() + state.interval * 60000
       });
+      state.pushSynced = true;
+      save();
       els.notifText.textContent = 'Prontinho — notificação de verdade ativada.';
+      updateNotifBtn();
     }catch(err){
       console.error('Falha ao ativar push:', err);
       els.notifText.textContent = 'Algo deu errado ao ativar. Tenta de novo em alguns segundos.';
