@@ -1,14 +1,19 @@
-const CACHE = 'daianalife-v2';
+const CACHE = 'daianalife-v3';
 const ASSETS = [
-  './',
-  './index.html',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-180.png',
-  './icons/icon-32.png',
-  './data/messages.json'
+  './icons/icon-32.png'
 ];
+
+// Arquivos que MUDAM (HTML e dados) usam network-first: sempre busca a
+// versão mais nova primeiro, e só cai no cache se estiver offline.
+// A v1/v2 deste service worker fazia cache-first pra tudo, inclusive
+// o index.html — isso fazia o app "travar" numa versão antiga pra
+// sempre, mesmo depois de eu subir atualizações no GitHub. Ícones não
+// mudam, então esses continuam cache-first (mais rápido, menos dados).
+const NETWORK_FIRST = ['index.html', 'messages.json', 'subscription.json'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
@@ -23,6 +28,21 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  const isNetworkFirst = NETWORK_FIRST.some(name => e.request.url.includes(name)) || e.request.mode === 'navigate';
+
+  if(isNetworkFirst){
+    e.respondWith(
+      fetch(e.request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy));
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request).then(res => res || fetch(e.request))
   );
