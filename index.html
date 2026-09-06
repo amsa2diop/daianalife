@@ -587,6 +587,16 @@
     touch-action: pan-y;
     transition: transform 0.22s ease;
   }
+  .note-num {
+    font-family: 'Quicksand', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--aqua-deep);
+    opacity: 0.55;
+    width: 18px;
+    flex-shrink: 0;
+    padding-bottom: 5px;
+  }
   .note-row input {
     flex: 1;
     border: none;
@@ -1064,6 +1074,14 @@
 
     const inner = document.createElement('div');
     inner.className = 'note-row-inner';
+
+    if(!isNew){
+      const num = document.createElement('span');
+      num.className = 'note-num';
+      num.textContent = (idx + 1) + '.';
+      inner.appendChild(num);
+    }
+
     const input = document.createElement('input');
     input.value = text;
     inner.appendChild(input);
