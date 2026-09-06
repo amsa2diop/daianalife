@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<!--
+  DaianaLife — lembrete de água em formato de PWA (progressive web app).
+  Feito pra Daiana por Amsa.
+
+  Estrutura do arquivo:
+    1. <head>  — meta tags, manifest, fontes
+    2. <style> — tokens de cor (:root), depois os componentes na ordem em
+                 que aparecem na tela: topo > avatar > mensagem > cartão de
+                 stats > bandeja de configurações
+    3. <body>  — os elementos visíveis, na mesma ordem do CSS acima
+    4. <script> — todo o comportamento roda dentro de uma IIFE só, sem
+                   build step nem dependências externas (é HTML puro)
+
+  Ver README.md pra instruções de deploy e visão geral do projeto.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<title>DaianaLife</title>
+
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<link rel="icon" href="icons/icon-32.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="DaianaLife" />
+<meta name="theme-color" content="#BEE9F5" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* Paleta central do app — muda essas variáveis pra ajustar o visual inteiro */
+  :root{
+    --sky-1: #eaf7fb;      /* fundo mais claro */
+    --sky-2: #cdeef7;      /* fundo mais escuro (gradiente) */
+    --aqua: #49b8d6;       /* cor principal, água */
+    --aqua-deep: #1f6e86;  /* aqua mais escuro, usado em texto/ícones */
+    --ink: #163a44;        /* texto principal */
+    --blush: #ff92a8;      /* cor de destaque, o toque "carinho" */
+    --blush-soft: #ffd7e0; /* blush claro, fundo de chip selecionado */
+    --foam: #ffffff;       /* branco dos cartões */
+    --shadow: 0 14px 30px -16px rgba(31, 110, 134, 0.35);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overscroll-behavior: none;
+  }
+
+  body {
+    font-family: 'Quicksand', sans-serif;
+    color: var(--ink);
+    background: radial-gradient(circle at 20% -10%, #ffffff 0%, var(--sky-1) 45%, var(--sky-2) 100%);
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 430px;
+    height: 100%;
+    padding: max(16px, env(safe-area-inset-top)) 18px max(14px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .middle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  .bubbles { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .bubble {
+    position: absolute;
+    bottom: -60px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(180,230,245,0.25));
+    opacity: 0.5;
+    animation: rise linear infinite;
+  }
+  @keyframes rise {
+    0% { transform: translateY(0); opacity: 0; }
+    10% { opacity: 0.55; }
+    100% { transform: translateY(-110vh) translateX(16px); opacity: 0; }
+  }
+
+  .topbar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 2;
+  }
+
+  .brand { text-align: left; }
+  .eyebrow {
+    font-size: 10.5px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--aqua-deep);
+    opacity: 0.7;
+    font-weight: 600;
+  }
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 25px;
+    margin: 1px 0 0;
+    color: var(--ink);
+    line-height: 1;
+  }
+  h1 span { color: var(--blush); font-style: italic; font-weight: 500; }
+
+  .gear-btn {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: var(--foam);
+    box-shadow: var(--shadow);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .gear-btn svg { width: 20px; height: 20px; stroke: var(--aqua-deep); transition: transform .4s; }
+  .gear-btn:active svg { transform: rotate(35deg); }
+
+  /* AVATAR + ANEL DE PROGRESSO
+     O anel (ring-svg) é um círculo SVG cujo stroke-dashoffset diminui
+     conforme a % da meta diária é atingida — ver função render() no JS.
+     Dentro do avatar, .wave é uma "água" que sobe de altura (--fill) na
+     mesma proporção. */
+  .avatar-wrap {
+    position: relative;
+    width: 156px;
+    height: 156px;
+    margin: 6px 0 4px;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+
+  .ring-svg { position: absolute; inset: -10px; width: calc(100% + 20px); height: calc(100% + 20px); transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: rgba(31,110,134,0.12); stroke-width: 6; }
+  .ring-progress {
+    fill: none;
+    stroke: url(#ringGradient);
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  .avatar {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border: 4px solid var(--foam);
+    background: #cdeef7;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .avatar .wave {
+    position: absolute;
+    left: -25%;
+    width: 150%;
+    bottom: 0;
+    height: var(--fill, 30%);
+    background: linear-gradient(180deg, rgba(73,184,214,0.35), rgba(31,110,134,0.55));
+    transition: height 0.8s cubic-bezier(.34,1.2,.64,1);
+    mix-blend-mode: multiply;
+  }
+  .avatar .wave svg { position: absolute; top: -14px; width: 200%; animation: drift 7s linear infinite; }
+  .avatar .wave svg.back { opacity: 0.5; animation-duration: 9s; animation-direction: reverse; top: -11px; }
+  @keyframes drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  .droplet-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: var(--blush);
+    color: white;
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 13px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 5px 12px -3px rgba(255,146,168,0.7);
+    border: 3px solid var(--foam);
+  }
+
+  .message {
+    text-align: center;
+    font-size: 14px;
+    color: var(--aqua-deep);
+    background: rgba(255,255,255,0.65);
+    padding: 8px 16px;
+    border-radius: 12px;
+    margin: 10px 0 18px;
+    max-width: 300px;
+    min-height: 18px;
+    z-index: 1;
+    transition: opacity 0.3s;
+    flex-shrink: 0;
+  }
+
+  .card {
+    width: 100%;
+    background: var(--foam);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+
+  .stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .stat { text-align: center; flex: 1; }
+  .stat .num {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--aqua-deep);
+    line-height: 1;
+  }
+  .stat .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #7fa3ad; margin-top: 3px; }
+  .stat-divider { width: 1px; height: 30px; background: #e7f3f6; }
+
+  .timer-box {
+    background: linear-gradient(135deg, var(--sky-1), var(--sky-2));
+    border-radius: 15px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .timer-box .label { font-size: 11px; color: var(--aqua-deep); opacity: 0.8; }
+  .timer-box .value { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 600; color: var(--aqua-deep); }
+
+  .cup-btn {
+    width: 100%;
+    border: none;
+    border-radius: 15px;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--aqua), var(--aqua-deep));
+    color: white;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 15.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 12px 20px -10px rgba(31,110,134,0.55);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .cup-btn:active { transform: scale(0.97); }
+  .cup-btn svg { width: 18px; height: 18px; }
+
+  .name-tag {
+    font-family: 'Fraunces', serif;
+    font-size: 15.5px;
+    font-weight: 600;
+    z-index: 1;
+    text-align: center;
+    margin-top: 2px;
+  }
+
+  footer {
+    padding-top: 4px;
+    font-size: 11px;
+    color: #9cc0c9;
+    text-align: center;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+  footer #pawnote { color: #9cc0c9; }
+
+  /* BANDEJA DE CONFIGURAÇÕES (bottom sheet)
+     Abre/fecha via classe .open, controlada pelo botão de engrenagem.
+     Fica fora do fluxo normal (position: fixed) pra deslizar por cima
+     de tudo sem empurrar o layout principal. */
+  .sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(22, 58, 68, 0.38);
+    backdrop-filter: blur(2px);
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .sheet-backdrop.open { opacity: 1; pointer-events: auto; }
+
+  .sheet {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    margin: 0 auto;
+    max-width: 430px;
+    background: var(--foam);
+    border-radius: 26px 26px 0 0;
+    padding: 10px 22px max(20px, env(safe-area-inset-bottom));
+    box-shadow: 0 -20px 50px -10px rgba(22,58,68,0.35);
+    z-index: 11;
+    transform: translateY(100%);
+    transition: transform 0.32s cubic-bezier(.32,.72,0,1);
+  }
+  .sheet.open { transform: translateY(0); }
+
+  .sheet-handle { width: 38px; height: 4px; background: #dcedf1; border-radius: 3px; margin: 8px auto 14px; }
+
+  .sheet h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 15.5px;
+    font-weight: 600;
+    margin: 14px 0 10px;
+    color: var(--ink);
+  }
+  .sheet h2:first-of-type { margin-top: 4px; }
+
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--sky-1);
+    color: var(--aqua-deep);
+    font-weight: 600;
+    font-size: 13px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip.active { background: var(--blush-soft); border-color: var(--blush); color: #c23b5c; }
+
+  .notif-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0 6px;
+    margin-top: 8px;
+    border-top: 1px solid #f0f6f7;
+    gap: 12px;
+  }
+  .notif-row p { margin: 0; font-size: 12.5px; color: var(--aqua-deep); line-height: 1.4; }
+  .notif-btn {
+    border: none;
+    background: var(--ink);
+    color: white;
+    padding: 9px 14px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 12.5px;
+    white-space: nowrap;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .notif-btn.on { background: var(--aqua-deep); }
+
+  .fine-print {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: #8fb1ba;
+    margin: 8px 0 0;
+  }
+
+  .reset-row {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid #f0f6f7;
+    text-align: center;
+  }
+  .reset-btn {
+    border: none;
+    background: none;
+    color: #c2495f;
+    font-weight: 600;
+    font-size: 12.5px;
+    padding: 6px 10px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .sheet-close {
+    width: 100%;
+    border: none;
+    background: var(--sky-1);
+    color: var(--aqua-deep);
+    font-weight: 700;
+    padding: 12px;
+    border-radius: 14px;
+    margin-top: 14px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bubble, .wave svg { animation: none !important; }
+  }
+
+  @media (max-height: 700px) {
+    .avatar-wrap { width: 108px; height: 108px; margin: 8px 0 0; }
+    .card { padding: 12px 16px; }
+    h1 { font-size: 21px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bubbles" id="bubbles"></div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="eyebrow">hidratando com carinho</div>
+      <h1>Daiana<span>Life</span></h1>
+    </div>
+    <button class="gear-btn" id="gearBtn" aria-label="Configurações">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+    </button>
+  </div>
+
+  <div class="middle">
+  <div class="avatar-wrap">
+    <svg class="ring-svg" viewBox="0 0 176 176">
+      <defs>
+        <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#49b8d6"/>
+          <stop offset="100%" stop-color="#ff92a8"/>
+        </linearGradient>
+      </defs>
+      <circle class="ring-track" cx="88" cy="88" r="83"></circle>
+      <circle class="ring-progress" id="ringProgress" cx="88" cy="88" r="83"
+        stroke-dasharray="522" stroke-dashoffset="522"></circle>
+    </svg>
+    <div class="avatar">
+      <img src="icons/icon-512.png" alt="Foto da Daiana" />
+      <div class="wave" id="wave" style="--fill:20%">
+        <svg class="back" viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0 10 Q 25 0 50 10 T 100 10 T 150 10 T 200 10 V20 H0 Z" fill="#1f6e86"/></svg>
+        <svg viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0 10 Q 25 20 50 10 T 100 10 T 150 10 T 200 10 V20 H0 Z" fill="#49b8d6"/></svg>
+      </div>
+    </div>
+    <div class="droplet-badge" id="cupBadge">0</div>
+  </div>
+
+  <div class="name-tag">Daiana</div>
+  <div class="message" id="message">oi, linda. bora beber uma água?</div>
+
+  <div class="card">
+    <div class="stats-row">
+      <div class="stat">
+        <div class="num" id="statCups">0</div>
+        <div class="lbl">copos hoje</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="num" id="statGoal">8</div>
+        <div class="lbl">meta diária</div>
+      </div>
+    </div>
+
+    <div class="timer-box">
+      <div>
+        <div class="label">próximo lembrete em</div>
+        <div class="value" id="countdown">--:--</div>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--aqua-deep)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;opacity:0.6;"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+    </div>
+
+    <button class="cup-btn" id="drinkBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.5 16.5a2 2 0 0 1-2 1.5H9.5a2 2 0 0 1-2-1.5L6 3Z"/><path d="M6.5 9h11"/></svg>
+      Bebi um copo!
+    </button>
+  </div>
+  </div>
+
+  <footer id="pawline">feito com carinho pra Daiana <span id="pawnote">· Chima aprova</span></footer>
+</div>
+
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <h2>De quanto em quanto tempo?</h2>
+  <div class="chip-row" id="intervalChips">
+    <div class="chip" data-min="30">30 min</div>
+    <div class="chip" data-min="45">45 min</div>
+    <div class="chip active" data-min="60">1 hora</div>
+    <div class="chip" data-min="90">1h30</div>
+    <div class="chip" data-min="120">2 horas</div>
+  </div>
+
+  <h2>Meta de copos por dia</h2>
+  <div class="chip-row" id="goalChips">
+    <div class="chip" data-goal="6">6</div>
+    <div class="chip active" data-goal="8">8</div>
+    <div class="chip" data-goal="10">10</div>
+    <div class="chip" data-goal="12">12</div>
+  </div>
+
+  <div class="notif-row">
+    <p id="notifText">Ativa as notificações pra eu te lembrar mesmo com o app fechado</p>
+    <button class="notif-btn" id="notifBtn">ativar</button>
+  </div>
+  <p class="fine-print" id="atalhoNote">O iPhone às vezes segura o aviso se o app fica fechado por muito tempo. Se algum lembrete não chegar, é só abrir o app de novo — ele se ajeita sozinho. Dá pra reforçar com um Atalho do iPhone que manda uma notificação de tempos em tempos, se você quiser essa camada extra.</p>
+
+  <div class="reset-row">
+    <button class="reset-btn" id="resetBtn">zerar o app</button>
+  </div>
+
+  <button class="sheet-close" id="sheetClose">pronto</button>
+</div>
+
+<script>
+(function(){
+  // Tudo é guardado no localStorage do navegador, só nesse aparelho —
+  // não tem servidor nem conta, então cada instalação tem seu próprio
+  // progresso. Ver loadState()/save() logo abaixo.
+  const STORAGE_KEY = 'daianalife_state_v1';
+
+  // Mensagens que aparecem sozinhas de tempos em tempos (troca a cada
+  // lembrete). Editar esses textos é a forma mais simples de mudar o
+  // "tom" do app sem mexer em nada de lógica.
+  const MESSAGES = [
+    "oi, linda. bora beber uma água?",
+    "e sua água hoje, linda?",
+    "poxa, já faz tempo que você não bebe nada",
+    "vai um copo d'água aí, meu bem?",
+    "não esquece de beber água",
+    "Chima já bebeu a dela. sua vez",
+    "dá o exemplo pra Chima, mãe",
+    "pausa rápida: um copo d'água",
+    "tá se cuidando aí, linda?",
+    "um golinho antes de continuar o que tava fazendo",
+    "água mantém a pele bonita, a cabeça afiada e você ainda mais gostosa"
+  ];
+  // Mensagens que aparecem só quando ela toca "Bebi um copo!"
+  const CELEBRATE = [
+    "boa, linda 💧",
+    "orgulho de você",
+    "assim que se cuida, linda",
+    "isso aí"
+  ];
+
+  function todayKey(){
+    const d = new Date();
+    return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+  }
+
+  // Lê o progresso salvo. Se mudou o dia desde a última abertura,
+  // zera a contagem de copos pro novo dia.
+  function loadState(){
+    let s;
+    try { s = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e){ s = null; }
+    if(!s) s = {};
+    if(s.day !== todayKey()){
+      s.cups = 0;
+      s.day = todayKey();
+    }
+    s.cups = s.cups ?? 0;
+    s.goal = s.goal ?? 8;
+    s.interval = s.interval ?? 60;
+    s.nextReminder = s.nextReminder ?? (Date.now() + s.interval*60000);
+    return s;
+  }
+
+  let state = loadState();
+  function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+  const els = {
+    cups: document.getElementById('statCups'),
+    goal: document.getElementById('statGoal'),
+    badge: document.getElementById('cupBadge'),
+    wave: document.getElementById('wave'),
+    ring: document.getElementById('ringProgress'),
+    message: document.getElementById('message'),
+    countdown: document.getElementById('countdown'),
+    drinkBtn: document.getElementById('drinkBtn'),
+    notifBtn: document.getElementById('notifBtn'),
+    notifText: document.getElementById('notifText'),
+    resetBtn: document.getElementById('resetBtn'),
+    intervalChips: document.querySelectorAll('#intervalChips .chip'),
+    goalChips: document.querySelectorAll('#goalChips .chip'),
+    gearBtn: document.getElementById('gearBtn'),
+    sheet: document.getElementById('sheet'),
+    sheetBackdrop: document.getElementById('sheetBackdrop'),
+    sheetClose: document.getElementById('sheetClose'),
+  };
+
+  const RING_CIRC = 522;
+
+  function render(){
+    els.cups.textContent = state.cups;
+    els.goal.textContent = state.goal;
+    els.badge.textContent = state.cups;
+
+    const pct = Math.min(1, state.cups / state.goal);
+    els.wave.style.setProperty('--fill', (10 + pct*80) + '%');
+    els.ring.style.strokeDashoffset = RING_CIRC - (RING_CIRC * pct);
+
+    els.intervalChips.forEach(c => c.classList.toggle('active', Number(c.dataset.min) === state.interval));
+    els.goalChips.forEach(c => c.classList.toggle('active', Number(c.dataset.goal) === state.goal));
+  }
+
+  function randomMessage(){
+    const text = MESSAGES[Math.floor(Math.random()*MESSAGES.length)];
+    els.message.style.opacity = 0;
+    setTimeout(()=>{
+      els.message.textContent = text;
+      els.message.style.opacity = 1;
+    }, 200);
+    return text;
+  }
+
+  function celebrate(){
+    els.message.style.opacity = 0;
+    setTimeout(()=>{
+      els.message.textContent = CELEBRATE[Math.floor(Math.random()*CELEBRATE.length)];
+      els.message.style.opacity = 1;
+    }, 200);
+  }
+
+  els.drinkBtn.addEventListener('click', () => {
+    state.cups += 1;
+    state.nextReminder = Date.now() + state.interval*60000;
+    save();
+    render();
+    celebrate();
+  });
+
+  els.intervalChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      state.interval = Number(chip.dataset.min);
+      state.nextReminder = Date.now() + state.interval*60000;
+      save();
+      render();
+    });
+  });
+
+  els.goalChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      state.goal = Number(chip.dataset.goal);
+      save();
+      render();
+    });
+  });
+
+  function openSheet(){
+    els.sheet.classList.add('open');
+    els.sheetBackdrop.classList.add('open');
+  }
+  function closeSheet(){
+    els.sheet.classList.remove('open');
+    els.sheetBackdrop.classList.remove('open');
+  }
+  els.gearBtn.addEventListener('click', openSheet);
+  els.sheetClose.addEventListener('click', closeSheet);
+  els.sheetBackdrop.addEventListener('click', closeSheet);
+
+  // Roda a cada segundo: atualiza o relógio regressivo e, quando chega
+  // a zero, dispara o lembrete e reagenda pro próximo intervalo.
+  function tick(){
+    let remaining = state.nextReminder - Date.now();
+    if(remaining <= 0){
+      fireReminder();
+      state.nextReminder = Date.now() + state.interval*60000;
+      save();
+      remaining = state.nextReminder - Date.now();
+    }
+    const mins = Math.floor(remaining/60000);
+    const secs = Math.floor((remaining%60000)/1000);
+    els.countdown.textContent = String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0');
+  }
+
+  // Troca a mensagem na tela, vibra o aparelho e, se a permissão de
+  // notificação estiver concedida, dispara uma notificação nativa.
+  // Importante: isso só funciona de forma confiável enquanto o app
+  // está aberto (ou foi fechado há pouco tempo) — o iOS suspende o
+  // JavaScript de apps em segundo plano depois de um tempo, então
+  // não há garantia de disparo com o app fechado por horas. Ver o
+  // texto explicativo perto do botão de notificação, no HTML.
+  function fireReminder(){
+    const text = randomMessage();
+    if('Notification' in window && Notification.permission === 'granted'){
+      try{
+        new Notification('DaianaLife', {
+          body: text,
+          icon: 'icons/icon-192.png',
+          badge: 'icons/icon-192.png'
+        });
+      }catch(e){}
+    }
+    if('vibrate' in navigator) navigator.vibrate([80,40,80]);
+  }
+
+  function updateNotifBtn(){
+    if(!('Notification' in window)){
+      els.notifBtn.textContent = 'ver como';
+      els.notifText.textContent = 'Pra ativar notificação, primeiro adiciona o app à tela de início (Compartilhar → Adicionar à Tela de Início). Depois é só voltar aqui.';
+      return;
+    }
+    if(Notification.permission === 'granted'){
+      els.notifBtn.textContent = 'ativado';
+      els.notifBtn.classList.add('on');
+    } else if (Notification.permission === 'denied') {
+      els.notifBtn.textContent = 'bloqueado';
+      els.notifText.textContent = 'As notificações foram bloqueadas pro app. Dá pra reativar nos Ajustes do iPhone, em Notificações > DaianaLife.';
+    } else {
+      els.notifBtn.textContent = 'ativar';
+      els.notifBtn.classList.remove('on');
+    }
+  }
+
+  els.notifBtn.addEventListener('click', async () => {
+    if(!('Notification' in window)) return;
+    await Notification.requestPermission();
+    updateNotifBtn();
+  });
+
+  // Confirmação de duas etapas em vez de window.confirm(): o diálogo
+  // nativo do navegador é bloqueado em alguns contextos (ex: quando o
+  // arquivo é aberto dentro de um preview/iframe), então a confirmação
+  // é feita trocando o texto do próprio botão por 3 segundos.
+  let resetArmed = false;
+  let resetTimer = null;
+  els.resetBtn.addEventListener('click', () => {
+    if(!resetArmed){
+      resetArmed = true;
+      els.resetBtn.textContent = 'toca de novo pra confirmar';
+      resetTimer = setTimeout(() => {
+        resetArmed = false;
+        els.resetBtn.textContent = 'zerar o app';
+      }, 3000);
+      return;
+    }
+    clearTimeout(resetTimer);
+    resetArmed = false;
+    localStorage.removeItem(STORAGE_KEY);
+    state = loadState();
+    save();
+    render();
+    randomMessage();
+    els.resetBtn.textContent = 'zerar o app';
+    closeSheet();
+  });
+
+  const bubbleContainer = document.getElementById('bubbles');
+  for(let i=0;i<12;i++){
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const size = 5 + Math.random()*14;
+    b.style.width = size+'px';
+    b.style.height = size+'px';
+    b.style.left = Math.random()*100+'%';
+    b.style.animationDuration = (10 + Math.random()*14)+'s';
+    b.style.animationDelay = (Math.random()*14)+'s';
+    bubbleContainer.appendChild(b);
+  }
+
+  render();
+  updateNotifBtn();
+  randomMessage();
+  tick();
+  setInterval(tick, 1000);
+
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+})();
+</script>
+</body>
+</html>
