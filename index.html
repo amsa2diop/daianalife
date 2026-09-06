@@ -119,6 +119,23 @@
   }
   .tab-btn svg { width: 21px; height: 21px; }
   .tab-btn.active { color: var(--aqua-deep); background: var(--sky-1); }
+  .tab-icon-wrap { position: relative; }
+  .tab-badge {
+    position: absolute;
+    top: -4px; right: -8px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: var(--blush);
+    color: white;
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 15px;
+    text-align: center;
+    display: none;
+  }
+  .tab-badge.show { display: block; }
 
   .middle {
     display: flex;
@@ -466,10 +483,21 @@
   }
 
   /* ABA DE LISTAS — visual de caderno (skeuomorfismo)
-     Cada item é um <input> deitado sobre uma "linha pautada" de fundo.
-     .note-row-bg fica atrás, revelado quando se arrasta o item pra
-     esquerda (ver swipe no JS); passar da metade apaga o item. */
-  .lists-header { width: 100%; text-align: left; flex-shrink: 0; margin-bottom: 10px; }
+     Cada item é um <input> apoiado numa linha (border-bottom do
+     próprio .note-row, não um fundo repetido — assim o texto encosta
+     exatamente na linha, sem folga). .note-row-bg fica atrás, revelado
+     quando se arrasta o item pra esquerda (ver swipe no JS); passar da
+     metade apaga o item. Clicar em qualquer parte vazia do caderno
+     foca o input "novo item" no fim da lista — não existe mais um
+     placeholder visível convidando pra isso. */
+  .lists-header {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-shrink: 0;
+    margin-bottom: 10px;
+  }
 
   .notebooks {
     flex: 1;
@@ -499,26 +527,50 @@
     background: #e6b3b8;
     opacity: 0.7;
   }
+  .notebook-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    margin: 0 0 2px;
+  }
   .notebook h3 {
     font-family: 'Fraunces', serif;
     font-style: italic;
     font-weight: 600;
     font-size: 14.5px;
     color: var(--aqua-deep);
-    margin: 0 0 4px;
-    flex-shrink: 0;
+    margin: 0;
   }
+  .clear-list-btn {
+    border: none;
+    background: none;
+    color: #c7d8de;
+    font-family: 'Quicksand', sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 3px 4px;
+  }
+  .clear-list-btn.armed { color: #c2495f; }
 
   .notebook-lines {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    background-image: repeating-linear-gradient(to bottom, transparent 0 33px, #dbe9ee 33px 34px);
-    background-attachment: local;
+    display: flex;
+    flex-direction: column;
+    cursor: text;
   }
 
-  .note-row { position: relative; height: 34px; overflow: hidden; }
+  .note-row {
+    position: relative;
+    height: 34px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-bottom: 1px solid #dbe9ee;
+  }
   .note-row-bg {
     position: absolute; inset: 0;
     background: #ffd9de;
@@ -530,7 +582,7 @@
     position: relative;
     height: 100%;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     background: #fffcf3;
     touch-action: pan-y;
     transition: transform 0.22s ease;
@@ -544,12 +596,15 @@
     font-size: 18px;
     line-height: 1;
     color: var(--ink);
-    padding: 4px 2px 2px;
+    padding: 0 2px 4px;
   }
-  .note-row input::placeholder {
-    font-family: 'Quicksand', sans-serif;
-    font-size: 13px;
-    color: #c3d6dc;
+  .note-row input::placeholder { color: transparent; }
+
+  /* linhas em branco só de enfeite, preenchem o resto do caderno */
+  .note-filler {
+    height: 34px;
+    flex-shrink: 0;
+    border-bottom: 1px solid #dbe9ee;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -646,11 +701,17 @@
 
   <div class="notebooks">
     <section class="notebook">
-      <h3>compras</h3>
+      <div class="notebook-top">
+        <h3>compras</h3>
+        <button class="clear-list-btn" data-list="compras">apagar lista</button>
+      </div>
       <div class="notebook-lines" id="linesCompras"></div>
     </section>
     <section class="notebook">
-      <h3>afazeres</h3>
+      <div class="notebook-top">
+        <h3>afazeres</h3>
+        <button class="clear-list-btn" data-list="afazeres">apagar lista</button>
+      </div>
       <div class="notebook-lines" id="linesAfazeres"></div>
     </section>
   </div>
@@ -664,7 +725,10 @@
     água
   </button>
   <button class="tab-btn" data-view="viewLists">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
+    <span class="tab-icon-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
+      <span class="tab-badge" id="listsBadge">0</span>
+    </span>
     listas
   </button>
 </nav>
@@ -963,9 +1027,17 @@
   function saveLists(){ localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }
 
   const listContainers = { compras: document.getElementById('linesCompras'), afazeres: document.getElementById('linesAfazeres') };
+  const FILLER_LINES = 8;
 
   function trashIcon(){
     return '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/></svg>';
+  }
+
+  function updateBadge(){
+    const total = lists.compras.length + lists.afazeres.length;
+    const badge = document.getElementById('listsBadge');
+    badge.textContent = total > 99 ? '99+' : String(total);
+    badge.classList.toggle('show', total > 0);
   }
 
   function renderList(key){
@@ -973,6 +1045,12 @@
     container.innerHTML = '';
     lists[key].forEach((text, idx) => container.appendChild(buildRow(key, idx, text, false)));
     container.appendChild(buildRow(key, lists[key].length, '', true));
+    for(let i = 0; i < FILLER_LINES; i++){
+      const filler = document.createElement('div');
+      filler.className = 'note-filler';
+      container.appendChild(filler);
+    }
+    updateBadge();
   }
 
   function buildRow(key, idx, text, isNew){
@@ -988,7 +1066,6 @@
     inner.className = 'note-row-inner';
     const input = document.createElement('input');
     input.value = text;
-    input.placeholder = isNew ? '+ novo item' : '';
     inner.appendChild(input);
     row.appendChild(inner);
 
@@ -1017,13 +1094,18 @@
       lists[key].push(value);
       saveLists();
       renderList(key);
-      const rows = listContainers[key].querySelectorAll('.note-row input');
-      rows[rows.length - 1].focus();
+      focusNewInput(key);
     } else {
       if(!value){ deleteItem(key, idx); return; }
       lists[key][idx] = value;
       saveLists();
+      updateBadge();
     }
+  }
+
+  function focusNewInput(key){
+    const rows = listContainers[key].querySelectorAll('.note-row input');
+    if(rows.length) rows[rows.length - 1].focus();
   }
 
   function deleteItem(key, idx){
@@ -1031,6 +1113,41 @@
     saveLists();
     renderList(key);
   }
+
+  // Clicar em qualquer parte vazia do caderno (linha de enfeite, ou
+  // fora de qualquer input) foca direto o input "novo item" do fim —
+  // não existe mais um "+ novo item" separado pra clicar.
+  Object.entries(listContainers).forEach(([key, container]) => {
+    container.addEventListener('click', (e) => {
+      if(e.target.tagName === 'INPUT') return;
+      focusNewInput(key);
+    });
+  });
+
+  // Apagar lista inteira: mesmo padrão de confirmação em dois toques
+  // do botão "zerar o app" (ver mais abaixo), pra não depender de
+  // window.confirm().
+  document.querySelectorAll('.clear-list-btn').forEach(btn => {
+    let armed = false, timer = null;
+    const key = btn.dataset.list;
+    const original = btn.textContent;
+    btn.addEventListener('click', () => {
+      if(!armed){
+        armed = true;
+        btn.classList.add('armed');
+        btn.textContent = 'confirmar?';
+        timer = setTimeout(() => { armed = false; btn.classList.remove('armed'); btn.textContent = original; }, 3000);
+        return;
+      }
+      clearTimeout(timer);
+      armed = false;
+      btn.classList.remove('armed');
+      btn.textContent = original;
+      lists[key] = [];
+      saveLists();
+      renderList(key);
+    });
+  });
 
   // Arrastar-pra-deletar: só no eixo X, só pra esquerda. Passar de 55px
   // anima a saída do item; menos que isso, ele volta pro lugar.
