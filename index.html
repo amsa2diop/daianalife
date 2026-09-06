@@ -765,10 +765,10 @@
   </div>
 
   <div class="notif-row">
-    <p id="notifText">Ativa as notificações pra eu te lembrar mesmo com o app fechado</p>
+    <p id="notifText">Ativa as notificações pra eu te lembrar de verdade, mesmo com o app fechado</p>
     <button class="notif-btn" id="notifBtn">ativar</button>
   </div>
-  <p class="fine-print" id="atalhoNote">O iPhone às vezes segura o aviso se o app fica fechado por muito tempo. Se algum lembrete não chegar, é só abrir o app de novo — ele se ajeita sozinho. Dá pra reforçar com um Atalho do iPhone que manda uma notificação de tempos em tempos, se você quiser essa camada extra.</p>
+  <p class="fine-print" id="atalhoNote">Esse lembrete agora chega de verdade, mesmo com o app fechado — um serviço nos bastidores confere a cada 15 minutos se está na hora. Por causa disso, o horário pode variar até uns 15 minutos pra mais, nunca exatamente no segundo certo.</p>
 
   <div class="reset-row">
     <button class="reset-btn" id="resetBtn">zerar o app</button>
@@ -784,29 +784,40 @@
   // progresso. Ver loadState()/save() logo abaixo.
   const STORAGE_KEY = 'daianalife_state_v1';
 
+  // CONFIGURAÇÃO DO PUSH DE VERDADE
+  // GITHUB_TOKEN é um fine-grained personal access token com permissão
+  // "Contents: Read and write" só neste repositório — fica embutido
+  // aqui de propósito, pra o próprio navegador dela conseguir gravar
+  // sua inscrição de push em data/subscription.json (não existe
+  // servidor nesse projeto, então é o próprio GitHub que guarda esse
+  // estado). Isso significa que o token fica visível pra quem abrir o
+  // código-fonte da página — o risco é limitado a esse repositório
+  // específico, mas é um token que precisa continuar válido: não
+  // revogar, ao contrário do token usado só pra dar `git push` uma
+  // vez. Ver README.md para o passo a passo completo.
+  const GITHUB_OWNER = 'amsa2diop';
+  const GITHUB_REPO = 'daianalife';
+  const GITHUB_TOKEN = 'COLOQUE_AQUI_O_TOKEN_PERMANENTE_DE_CONTENTS_READ_WRITE';
+  const SUB_FILE_PATH = 'data/subscription.json';
+  const VAPID_PUBLIC_KEY = 'BCYB8HCsr6lq2Y5MfuQg2Fk2F4fgIN7SDJ1TaEt2BxF0n595CimPub5u65YOEeisb9smJDQlQrKN1wlFARsZEN0';
+
   // Mensagens que aparecem sozinhas de tempos em tempos (troca a cada
-  // lembrete). Editar esses textos é a forma mais simples de mudar o
-  // "tom" do app sem mexer em nada de lógica.
-  const MESSAGES = [
+  // lembrete). Vêm de data/messages.json — mesmo arquivo que o script
+  // do GitHub Actions lê pra escrever nas notificações de verdade, pra
+  // não precisar editar o texto em dois lugares. Esses arrays aqui são
+  // só um fallback caso o fetch falhe (ex: primeira visita offline).
+  let MESSAGES = [
     "oi, linda. bora beber uma água?",
-    "e sua água hoje, linda?",
-    "poxa, já faz tempo que você não bebe nada",
-    "vai um copo d'água aí, meu bem?",
-    "não esquece de beber água",
-    "Chima já bebeu a dela. sua vez",
-    "dá o exemplo pra Chima, mãe",
-    "pausa rápida: um copo d'água",
-    "tá se cuidando aí, linda?",
-    "um golinho antes de continuar o que tava fazendo",
-    "água mantém a pele bonita, a cabeça afiada e você ainda mais gostosa"
+    "não esquece de beber água"
   ];
-  // Mensagens que aparecem só quando ela toca "Bebi um copo!"
-  const CELEBRATE = [
+  let CELEBRATE = [
     "boa, linda 💧",
-    "orgulho de você",
-    "assim que se cuida, linda",
-    "isso aí"
+    "orgulho de você"
   ];
+  fetch('data/messages.json').then(r => r.json()).then(data => {
+    if(data.reminders) MESSAGES = data.reminders;
+    if(data.celebrate) CELEBRATE = data.celebrate;
+  }).catch(() => {});
 
   function todayKey(){
     const d = new Date();
@@ -892,6 +903,9 @@
     save();
     render();
     celebrate();
+    if('Notification' in window && Notification.permission === 'granted'){
+      syncRemote({ nextReminder: state.nextReminder });
+    }
   });
 
   els.intervalChips.forEach(chip => {
@@ -900,6 +914,9 @@
       state.nextReminder = Date.now() + state.interval*60000;
       save();
       render();
+      if('Notification' in window && Notification.permission === 'granted'){
+        syncRemote({ interval: state.interval, nextReminder: state.nextReminder });
+      }
     });
   });
 
@@ -959,7 +976,7 @@
   }
 
   function updateNotifBtn(){
-    if(!('Notification' in window)){
+    if(!('Notification' in window) || !('PushManager' in window)){
       els.notifBtn.textContent = 'ver como';
       els.notifText.textContent = 'Pra ativar notificação, primeiro adiciona o app à tela de início (Compartilhar → Adicionar à Tela de Início). Depois é só voltar aqui.';
       return;
@@ -976,11 +993,75 @@
     }
   }
 
-  els.notifBtn.addEventListener('click', async () => {
-    if(!('Notification' in window)) return;
-    await Notification.requestPermission();
+  // Converte a chave pública VAPID (texto) pro formato que o
+  // PushManager exige. É um trecho padrão, igual em qualquer app que
+  // usa Web Push.
+  function urlBase64ToUint8Array(base64String){
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  }
+
+  // SINCRONIA COM O GITHUB
+  // data/subscription.json no repositório é o único lugar onde a
+  // inscrição de push sobrevive fora deste navegador — é lá que o
+  // workflow do GitHub Actions vai ler pra saber pra quem, e quando,
+  // mandar o lembrete de verdade.
+  async function githubReadSub(){
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${SUB_FILE_PATH}`, {
+      headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github+json' }
+    });
+    if(!res.ok) throw new Error('Falha ao ler subscription.json: ' + res.status);
+    const data = await res.json();
+    return { content: JSON.parse(decodeURIComponent(escape(atob(data.content)))), sha: data.sha };
+  }
+
+  async function githubWriteSub(obj, sha){
+    const body = {
+      message: 'app: atualiza inscrição de push',
+      content: btoa(unescape(encodeURIComponent(JSON.stringify(obj, null, 2) + '\n'))),
+      sha
+    };
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${SUB_FILE_PATH}`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github+json' },
+      body: JSON.stringify(body)
+    });
+    if(!res.ok) throw new Error('Falha ao gravar subscription.json: ' + res.status);
+  }
+
+  async function syncRemote(patch){
+    try{
+      const { content, sha } = await githubReadSub();
+      await githubWriteSub({ ...content, ...patch }, sha);
+    }catch(err){
+      console.warn('Não consegui sincronizar com o GitHub agora:', err);
+    }
+  }
+
+  async function enablePush(){
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const perm = await Notification.requestPermission();
     updateNotifBtn();
-  });
+    if(perm !== 'granted') return;
+
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    await syncRemote({
+      subscription: sub.toJSON(),
+      interval: state.interval,
+      nextReminder: Date.now() + state.interval * 60000
+    });
+  }
+
+  els.notifBtn.addEventListener('click', enablePush);
 
   // Confirmação de duas etapas em vez de window.confirm(): o diálogo
   // nativo do navegador é bloqueado em alguns contextos (ex: quando o

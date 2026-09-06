@@ -1,0 +1,48 @@
+name: Lembrete de água (push)
+
+# Roda a cada 15 minutos e confere, no data/subscription.json, se já
+# passou do horário do próximo lembrete. Se sim, manda uma notificação
+# push de verdade (chega mesmo com o app fechado) e reagenda o próximo
+# horário. 15 min é o menor intervalo configurável no app (30 min) ÷ 2,
+# pra manter o atraso máximo em ~15 min mesmo quando o GitHub atrasa um
+# pouco o cron (o que acontece de vez em quando em horários de pico).
+#
+# Se o repositório ficar 60 dias sem nenhum commit, o GitHub desativa
+# workflows agendados sozinho — nesse caso é só abrir a aba Actions e
+# reativar.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  send-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instala web-push
+        run: npm install web-push@3 --no-save
+
+      - name: Verifica e envia lembrete
+        env:
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: node scripts/send-push.js
+
+      - name: Salva o próximo horário, se mudou
+        run: |
+          if ! git diff --quiet -- data/subscription.json; then
+            git config user.name "daianalife-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add data/subscription.json
+            git commit -m "chore: reagenda próximo lembrete [skip ci]"
+            git push
+          fi
