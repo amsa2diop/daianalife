@@ -1,5 +1,11 @@
 {
-  "subscription": null,
-  "interval": 60,
-  "nextReminder": null
+  "subscription": {
+    "endpoint": "https://web.push.apple.com/QBj7H2sWMgLzOqjlA_GMcKdmKbvfiQGljnOxVg9UU1ym8amqGpNkEGON_g54C0VLgd6RTHmifyaY4td3rr8L8R04uYEXKIIM4Xanlm3CQIdjuhvKgsL7FegoJejkGzjfRcbP0m_-fdCxcM2Uxu7_z2XAk3cQ5a_A713XzMvX2jo",
+    "keys": {
+      "p256dh": "BHLYDrfXVd7zHAkPGvOH03xNb4KQW817aW7sLi38-1yrqibcgORS697NFYZKIfZ6kfG248ygV2_cNLr4Cjy6l6A",
+      "auth": "9tgL6x2El0zwMSojoffysw"
+    }
+  },
+  "interval": 5,
+  "nextReminder": 1788738529353
 }
