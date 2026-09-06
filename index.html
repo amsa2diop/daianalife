@@ -30,7 +30,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Quicksand:wght@500;600;700&family=Shadows+Into+Light&display=swap" rel="stylesheet">
 
 <style>
   /* Paleta central do app — muda essas variáveis pra ajustar o visual inteiro */
@@ -65,18 +65,60 @@
     overflow: hidden;
   }
 
-  .app {
+  /* CASCO DO APP
+     .shell ocupa a tela toda e empilha as "abas" (.views) em cima da
+     barra de navegação (.tabbar). Só uma .view fica visível por vez,
+     trocada via classe .active — ver o JS no fim do arquivo. */
+  .shell {
     width: 100%;
     max-width: 430px;
     height: 100%;
-    padding: max(16px, env(safe-area-inset-top)) 18px max(14px, env(safe-area-inset-bottom));
     display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .views { flex: 1; min-height: 0; position: relative; }
+
+  .view {
+    display: none;
+    height: 100%;
+    padding: max(14px, env(safe-area-inset-top)) 18px 10px;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
     position: relative;
     overflow: hidden;
   }
+  .view.active { display: flex; }
+
+  .tabbar {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px 10px max(8px, env(safe-area-inset-bottom));
+    background: var(--foam);
+    box-shadow: 0 -8px 20px -14px rgba(31,110,134,0.4);
+    z-index: 6;
+  }
+  .tab-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    color: #a9c9d1;
+    font-family: 'Quicksand', sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 5px 26px;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  .tab-btn svg { width: 21px; height: 21px; }
+  .tab-btn.active { color: var(--aqua-deep); background: var(--sky-1); }
 
   .middle {
     display: flex;
@@ -149,9 +191,9 @@
      mesma proporção. */
   .avatar-wrap {
     position: relative;
-    width: 156px;
-    height: 156px;
-    margin: 6px 0 4px;
+    width: 144px;
+    height: 144px;
+    margin: 4px 0 4px;
     z-index: 1;
     flex-shrink: 0;
   }
@@ -423,12 +465,99 @@
     cursor: pointer;
   }
 
+  /* ABA DE LISTAS — visual de caderno (skeuomorfismo)
+     Cada item é um <input> deitado sobre uma "linha pautada" de fundo.
+     .note-row-bg fica atrás, revelado quando se arrasta o item pra
+     esquerda (ver swipe no JS); passar da metade apaga o item. */
+  .lists-header { width: 100%; text-align: left; flex-shrink: 0; margin-bottom: 10px; }
+
+  .notebooks {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .notebook {
+    flex: 1;
+    min-height: 0;
+    background: #fffcf3;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 12px 14px 8px 26px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .notebook::before {
+    content: '';
+    position: absolute;
+    left: 20px; top: 10px; bottom: 10px;
+    width: 1.5px;
+    background: #e6b3b8;
+    opacity: 0.7;
+  }
+  .notebook h3 {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 600;
+    font-size: 14.5px;
+    color: var(--aqua-deep);
+    margin: 0 0 4px;
+    flex-shrink: 0;
+  }
+
+  .notebook-lines {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background-image: repeating-linear-gradient(to bottom, transparent 0 33px, #dbe9ee 33px 34px);
+    background-attachment: local;
+  }
+
+  .note-row { position: relative; height: 34px; overflow: hidden; }
+  .note-row-bg {
+    position: absolute; inset: 0;
+    background: #ffd9de;
+    display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 12px;
+  }
+  .note-row-bg svg { width: 16px; height: 16px; stroke: #c2495f; }
+  .note-row-inner {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    background: #fffcf3;
+    touch-action: pan-y;
+    transition: transform 0.22s ease;
+  }
+  .note-row input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-family: 'Shadows Into Light', cursive;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--ink);
+    padding: 4px 2px 2px;
+  }
+  .note-row input::placeholder {
+    font-family: 'Quicksand', sans-serif;
+    font-size: 13px;
+    color: #c3d6dc;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .bubble, .wave svg { animation: none !important; }
   }
 
   @media (max-height: 700px) {
-    .avatar-wrap { width: 108px; height: 108px; margin: 8px 0 0; }
+    .avatar-wrap { width: 104px; height: 104px; margin: 4px 0 0; }
     .card { padding: 12px 16px; }
     h1 { font-size: 21px; }
   }
@@ -438,7 +567,10 @@
 
 <div class="bubbles" id="bubbles"></div>
 
-<div class="app">
+<div class="shell">
+<div class="views">
+
+<div class="view active" id="viewWater">
   <div class="topbar">
     <div class="brand">
       <div class="eyebrow">hidratando com carinho</div>
@@ -451,16 +583,16 @@
 
   <div class="middle">
   <div class="avatar-wrap">
-    <svg class="ring-svg" viewBox="0 0 176 176">
+    <svg class="ring-svg" viewBox="0 0 164 164">
       <defs>
         <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stop-color="#49b8d6"/>
           <stop offset="100%" stop-color="#ff92a8"/>
         </linearGradient>
       </defs>
-      <circle class="ring-track" cx="88" cy="88" r="83"></circle>
-      <circle class="ring-progress" id="ringProgress" cx="88" cy="88" r="83"
-        stroke-dasharray="522" stroke-dashoffset="522"></circle>
+      <circle class="ring-track" cx="82" cy="82" r="77"></circle>
+      <circle class="ring-progress" id="ringProgress" cx="82" cy="82" r="77"
+        stroke-dasharray="484" stroke-dashoffset="484"></circle>
     </svg>
     <div class="avatar">
       <img src="icons/icon-512.png" alt="Foto da Daiana" />
@@ -504,6 +636,38 @@
   </div>
 
   <footer id="pawline">feito com carinho pra Daiana <span id="pawnote">· Chima aprova</span></footer>
+</div>
+
+<div class="view" id="viewLists">
+  <div class="lists-header">
+    <div class="eyebrow">só pra não esquecer</div>
+    <h1>Minhas<span>Listas</span></h1>
+  </div>
+
+  <div class="notebooks">
+    <section class="notebook">
+      <h3>compras</h3>
+      <div class="notebook-lines" id="linesCompras"></div>
+    </section>
+    <section class="notebook">
+      <h3>afazeres</h3>
+      <div class="notebook-lines" id="linesAfazeres"></div>
+    </section>
+  </div>
+</div>
+
+</div>
+
+<nav class="tabbar">
+  <button class="tab-btn active" data-view="viewWater">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5s7 7.4 7 12a7 7 0 1 1-14 0c0-4.6 7-12 7-12Z"/></svg>
+    água
+  </button>
+  <button class="tab-btn" data-view="viewLists">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
+    listas
+  </button>
+</nav>
 </div>
 
 <div class="sheet-backdrop" id="sheetBackdrop"></div>
@@ -615,7 +779,7 @@
     sheetClose: document.getElementById('sheetClose'),
   };
 
-  const RING_CIRC = 522;
+  const RING_CIRC = 484;
 
   function render(){
     els.cups.textContent = state.cups;
@@ -700,8 +864,8 @@
     els.countdown.textContent = String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0');
   }
 
-  // Troca a mensagem na tela, vibra o aparelho e, se a permissão de
-  // notificação estiver concedida, dispara uma notificação nativa.
+  // Troca a mensagem na tela e, se a permissão de notificação estiver
+  // concedida, dispara uma notificação nativa.
   // Importante: isso só funciona de forma confiável enquanto o app
   // está aberto (ou foi fechado há pouco tempo) — o iOS suspende o
   // JavaScript de apps em segundo plano depois de um tempo, então
@@ -718,7 +882,6 @@
         });
       }catch(e){}
     }
-    if('vibrate' in navigator) navigator.vibrate([80,40,80]);
   }
 
   function updateNotifBtn(){
@@ -771,6 +934,138 @@
     els.resetBtn.textContent = 'zerar o app';
     closeSheet();
   });
+
+  // ABAS (água / listas) — troca simples de classe .active
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === btn.dataset.view));
+    });
+  });
+
+  // LISTAS (compras / afazeres) — guardadas à parte do estado da água.
+  // Cada lista é um array de strings. A última linha de cada uma é
+  // sempre um input vazio (placeholder "+ novo item"); escrever nela e
+  // apertar Enter grava o item e abre uma nova linha vazia embaixo —
+  // é assim que "pula pro próximo item". Arrastar um item pra
+  // esquerda além da metade apaga ele (ver attachSwipe).
+  const LISTS_KEY = 'daianalife_lists_v1';
+  function loadLists(){
+    let l;
+    try { l = JSON.parse(localStorage.getItem(LISTS_KEY)); } catch(e){ l = null; }
+    if(!l) l = {};
+    l.compras = l.compras ?? [];
+    l.afazeres = l.afazeres ?? [];
+    return l;
+  }
+  let lists = loadLists();
+  function saveLists(){ localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }
+
+  const listContainers = { compras: document.getElementById('linesCompras'), afazeres: document.getElementById('linesAfazeres') };
+
+  function trashIcon(){
+    return '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"/></svg>';
+  }
+
+  function renderList(key){
+    const container = listContainers[key];
+    container.innerHTML = '';
+    lists[key].forEach((text, idx) => container.appendChild(buildRow(key, idx, text, false)));
+    container.appendChild(buildRow(key, lists[key].length, '', true));
+  }
+
+  function buildRow(key, idx, text, isNew){
+    const row = document.createElement('div');
+    row.className = 'note-row';
+
+    const bg = document.createElement('div');
+    bg.className = 'note-row-bg';
+    bg.innerHTML = trashIcon();
+    row.appendChild(bg);
+
+    const inner = document.createElement('div');
+    inner.className = 'note-row-inner';
+    const input = document.createElement('input');
+    input.value = text;
+    input.placeholder = isNew ? '+ novo item' : '';
+    inner.appendChild(input);
+    row.appendChild(inner);
+
+    input.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        commitRow(key, idx, input.value, isNew);
+      }
+    });
+    input.addEventListener('blur', () => {
+      if(isNew){
+        if(input.value.trim()) commitRow(key, idx, input.value, true);
+      } else if(input.value.trim() !== text){
+        commitRow(key, idx, input.value, false);
+      }
+    });
+
+    if(!isNew) attachSwipe(inner, row, key, idx);
+    return row;
+  }
+
+  function commitRow(key, idx, rawValue, isNew){
+    const value = rawValue.trim();
+    if(isNew){
+      if(!value) return;
+      lists[key].push(value);
+      saveLists();
+      renderList(key);
+      const rows = listContainers[key].querySelectorAll('.note-row input');
+      rows[rows.length - 1].focus();
+    } else {
+      if(!value){ deleteItem(key, idx); return; }
+      lists[key][idx] = value;
+      saveLists();
+    }
+  }
+
+  function deleteItem(key, idx){
+    lists[key].splice(idx, 1);
+    saveLists();
+    renderList(key);
+  }
+
+  // Arrastar-pra-deletar: só no eixo X, só pra esquerda. Passar de 55px
+  // anima a saída do item; menos que isso, ele volta pro lugar.
+  function attachSwipe(inner, row, key, idx){
+    let startX = 0, dx = 0, dragging = false;
+
+    inner.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      dragging = true;
+      inner.style.transition = 'none';
+    }, { passive: true });
+
+    inner.addEventListener('touchmove', (e) => {
+      if(!dragging) return;
+      dx = Math.min(0, Math.max(-90, e.touches[0].clientX - startX));
+      inner.style.transform = `translateX(${dx}px)`;
+    }, { passive: true });
+
+    inner.addEventListener('touchend', () => {
+      dragging = false;
+      inner.style.transition = 'transform 0.22s ease';
+      if(dx < -55){
+        inner.style.transform = 'translateX(-100%)';
+        row.style.transition = 'opacity 0.2s ease 0.1s';
+        row.style.opacity = '0';
+        setTimeout(() => deleteItem(key, idx), 220);
+      } else {
+        inner.style.transform = 'translateX(0)';
+      }
+      dx = 0;
+    });
+  }
+
+  renderList('compras');
+  renderList('afazeres');
 
   const bubbleContainer = document.getElementById('bubbles');
   for(let i=0;i<12;i++){
