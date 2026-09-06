@@ -1041,24 +1041,33 @@
   }
 
   async function enablePush(){
-    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+      els.notifText.textContent = 'Isso só funciona abrindo o app pelo ícone da Tela de Início, não pelo link do Safari. Se já adicionou, feche e abra de novo por ali.';
+      return;
+    }
     const perm = await Notification.requestPermission();
     updateNotifBtn();
     if(perm !== 'granted') return;
 
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if(!sub){
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    try{
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if(!sub){
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+      }
+      await syncRemote({
+        subscription: sub.toJSON(),
+        interval: state.interval,
+        nextReminder: Date.now() + state.interval * 60000
       });
+      els.notifText.textContent = 'Prontinho — notificação de verdade ativada.';
+    }catch(err){
+      console.error('Falha ao ativar push:', err);
+      els.notifText.textContent = 'Algo deu errado ao ativar. Tenta de novo em alguns segundos.';
     }
-    await syncRemote({
-      subscription: sub.toJSON(),
-      interval: state.interval,
-      nextReminder: Date.now() + state.interval * 60000
-    });
   }
 
   els.notifBtn.addEventListener('click', enablePush);
