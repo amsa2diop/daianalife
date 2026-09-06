@@ -1013,16 +1013,20 @@
   // diretamente (não temos token aqui) — é o Worker, que guarda o
   // segredo do lado dele.
   async function syncRemote(patch){
+    let res;
     try{
-      const res = await fetch(PUSH_RELAY_URL, {
+      res = await fetch(PUSH_RELAY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch)
       });
-      if(!res.ok) throw new Error('Worker respondeu ' + res.status);
     }catch(err){
-      console.warn('Não consegui sincronizar agora:', err);
-      throw err;
+      throw new Error('não consegui nem chamar o worker (' + err.message + ')');
+    }
+    let body = null;
+    try{ body = await res.json(); }catch(e){}
+    if(!res.ok || (body && body.ok === false)){
+      throw new Error('worker: ' + res.status + ' ' + (body && body.error ? body.error : ''));
     }
   }
 
@@ -1035,15 +1039,23 @@
     updateNotifBtn();
     if(perm !== 'granted') return;
 
+    let sub;
     try{
       const reg = await navigator.serviceWorker.ready;
-      let sub = await reg.pushManager.getSubscription();
+      sub = await reg.pushManager.getSubscription();
       if(!sub){
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
         });
       }
+    }catch(err){
+      console.error('Falha ao criar inscrição:', err);
+      els.notifText.textContent = 'Erro ao criar a inscrição: ' + err.message;
+      return;
+    }
+
+    try{
       await syncRemote({
         subscription: sub.toJSON(),
         interval: state.interval,
@@ -1055,7 +1067,7 @@
       updateNotifBtn();
     }catch(err){
       console.error('Falha ao ativar push:', err);
-      els.notifText.textContent = 'Algo deu errado ao ativar. Tenta de novo em alguns segundos.';
+      els.notifText.textContent = 'Deu erro ao sincronizar: ' + err.message;
     }
   }
 
