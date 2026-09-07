@@ -334,6 +334,9 @@
     font-size: 11px;
     font-weight: 700;
     color: var(--aqua-deep);
+    border: none;
+    font-family: 'Quicksand', sans-serif;
+    cursor: pointer;
   }
   .pill svg { width: 14px; height: 14px; flex-shrink: 0; }
 
@@ -695,6 +698,118 @@
     cursor: pointer;
   }
 
+  /* MODAIS DE GRÁFICO E CALENDÁRIO — abrem ao tocar nas pílulas */
+  .info-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(22, 58, 68, 0.55);
+    z-index: 21;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .info-overlay.show { display: flex; }
+  .info-card {
+    background: var(--foam);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    padding: 22px 20px 18px;
+    max-width: 320px;
+    width: 100%;
+  }
+  .info-card h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 17px;
+    margin: 0 0 2px;
+    color: var(--ink);
+    text-align: center;
+  }
+  .info-sub {
+    font-size: 11px;
+    color: #7fa3ad;
+    text-align: center;
+    margin-bottom: 18px;
+  }
+  .info-close {
+    width: 100%;
+    border: none;
+    background: var(--sky-1);
+    color: var(--aqua-deep);
+    font-weight: 700;
+    font-size: 13.5px;
+    padding: 10px;
+    border-radius: 13px;
+    cursor: pointer;
+    margin-top: 16px;
+  }
+
+  /* gráfico de barras */
+  .bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 110px;
+    gap: 6px;
+    position: relative;
+    padding-top: 20px;
+  }
+  .bars .goal-line {
+    position: absolute;
+    left: 0; right: 0;
+    border-top: 2px dashed var(--blush);
+  }
+  .bar-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+    height: 100%;
+    justify-content: flex-end;
+  }
+  .bar-fill {
+    width: 15px;
+    border-radius: 6px 6px 3px 3px;
+    background: linear-gradient(180deg, var(--aqua), var(--aqua-deep));
+    min-height: 3px;
+  }
+  .bar-fill.future { background: var(--sky-1); opacity: 0.6; }
+  .bar-val { font-size: 9px; font-weight: 700; color: var(--aqua-deep); }
+  .bar-day { font-size: 10px; color: #9cc0c9; margin-top: 4px; font-weight: 700; }
+
+  /* calendário */
+  .cal-dow {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 6px;
+  }
+  .cal-dow span {
+    font-size: 9.5px;
+    color: #9cc0c9;
+    text-align: center;
+    font-weight: 700;
+  }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .cal-day {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+  .cal-day.hit { background: var(--aqua-deep); color: #fff; }
+  .cal-day.miss { background: var(--sky-1); color: #9cc0c9; }
+  .cal-day.nodata { background: transparent; color: #d8e8ee; }
+  .cal-day.future { background: transparent; color: #e7f3f6; }
+
   @media (prefers-reduced-motion: reduce) {
     .bubble, .wave svg { animation: none !important; }
   }
@@ -721,6 +836,27 @@
   </div>
 </div>
 
+<div class="info-overlay" id="chartOverlay">
+  <div class="info-card">
+    <h2>Litros por dia</h2>
+    <div class="info-sub" id="chartSub">essa semana · meta: 0,0 L/dia</div>
+    <div class="bars" id="chartBars"></div>
+    <button class="info-close" id="chartClose">fechar</button>
+  </div>
+</div>
+
+<div class="info-overlay" id="calendarOverlay">
+  <div class="info-card">
+    <h2>Dias hidratada</h2>
+    <div class="info-sub" id="calendarSub">setembro de 2026</div>
+    <div class="cal-dow">
+      <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+    </div>
+    <div class="cal-grid" id="calendarGrid"></div>
+    <button class="info-close" id="calendarClose">fechar</button>
+  </div>
+</div>
+
 <div class="shell">
 <div class="views">
 
@@ -737,8 +873,8 @@
 
   <div class="middle">
   <div class="pill-row">
-    <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.5 16.5a2 2 0 0 1-2 1.5H9.5a2 2 0 0 1-2-1.5L6 3Z"/><path d="M6.5 9h11"/></svg><span id="chipStreak">0 dias hidratada</span></div>
-    <div class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5s7 7.4 7 12a7 7 0 1 1-14 0c0-4.6 7-12 7-12Z"/></svg><span id="chipWeekAvg">0,0 L/dia</span></div>
+    <button class="pill" id="pillStreak" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.5 16.5a2 2 0 0 1-2 1.5H9.5a2 2 0 0 1-2-1.5L6 3Z"/><path d="M6.5 9h11"/></svg><span id="chipStreak">0 dias hidratada</span></button>
+    <button class="pill" id="pillWeekAvg" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5s7 7.4 7 12a7 7 0 1 1-14 0c0-4.6 7-12 7-12Z"/></svg><span id="chipWeekAvg">0,0 L/dia</span></button>
   </div>
   <div class="avatar-wrap">
     <svg class="ring-svg" viewBox="0 0 164 164">
@@ -934,7 +1070,10 @@
   }).catch(() => {});
 
   function todayKey(){
-    const d = new Date();
+    return dateKey(new Date());
+  }
+
+  function dateKey(d){
     return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
   }
 
@@ -972,6 +1111,13 @@
       s.week = { key: weekKey(), days: {} };
     }
     s.week.days[s.day] = s.cups;
+    s.history = s.history ?? {};
+    s.history[s.day] = s.cups;
+    // guarda só os últimos ~60 dias, pra não crescer sem limite
+    const keys = Object.keys(s.history);
+    if(keys.length > 60){
+      keys.sort().slice(0, keys.length - 60).forEach(k => delete s.history[k]);
+    }
     return s;
   }
 
@@ -983,6 +1129,16 @@
     streak: document.getElementById('chipStreak'),
     goal: document.getElementById('statGoal'),
     weekAvg: document.getElementById('chipWeekAvg'),
+    pillStreak: document.getElementById('pillStreak'),
+    pillWeekAvg: document.getElementById('pillWeekAvg'),
+    chartOverlay: document.getElementById('chartOverlay'),
+    chartSub: document.getElementById('chartSub'),
+    chartBars: document.getElementById('chartBars'),
+    chartClose: document.getElementById('chartClose'),
+    calendarOverlay: document.getElementById('calendarOverlay'),
+    calendarSub: document.getElementById('calendarSub'),
+    calendarGrid: document.getElementById('calendarGrid'),
+    calendarClose: document.getElementById('calendarClose'),
     badge: document.getElementById('cupBadge'),
     wave: document.getElementById('wave'),
     ring: document.getElementById('ringProgress'),
@@ -1021,6 +1177,104 @@
     els.weekAvg.textContent = `${avgLiters.toFixed(1).replace('.', ',')} L/dia`;
   }
 
+  // GRÁFICO DE LITROS — semana começando no domingo. Usa state.history
+  // (guarda os últimos ~60 dias) pra montar as 7 barras, mesmo que
+  // algum dia não tenha sido o dia atual quando os dados foram salvos.
+  const DOW_LETTERS = ['D','S','T','Q','Q','S','S'];
+
+  function renderChart(){
+    const today = new Date();
+    const sunday = new Date(today);
+    sunday.setDate(today.getDate() - today.getDay());
+
+    const goalLiters = state.goal * 0.25;
+    let maxLiters = goalLiters;
+    const days = [];
+    for(let i = 0; i < 7; i++){
+      const d = new Date(sunday);
+      d.setDate(sunday.getDate() + i);
+      const key = dateKey(d);
+      const isFuture = d > today && key !== todayKey();
+      const cups = state.history[key];
+      const liters = cups !== undefined ? cups * 0.25 : 0;
+      if(liters > maxLiters) maxLiters = liters;
+      days.push({ letter: DOW_LETTERS[i], liters, hasData: cups !== undefined, isFuture });
+    }
+
+    els.chartSub.textContent = `essa semana · meta: ${goalLiters.toFixed(1).replace('.', ',')} L/dia`;
+    els.chartBars.innerHTML = '';
+    const goalPct = Math.min(100, (goalLiters / maxLiters) * 100);
+    const goalLine = document.createElement('div');
+    goalLine.className = 'goal-line';
+    goalLine.style.bottom = goalPct + '%';
+    els.chartBars.style.position = 'relative';
+    els.chartBars.appendChild(goalLine);
+
+    days.forEach(day => {
+      const col = document.createElement('div');
+      col.className = 'bar-col';
+      const val = document.createElement('div');
+      val.className = 'bar-val';
+      val.textContent = day.isFuture ? '' : (day.hasData || day.liters > 0 ? day.liters.toFixed(1).replace('.', ',') : '–');
+      const fill = document.createElement('div');
+      fill.className = 'bar-fill' + (day.isFuture ? ' future' : '');
+      const pct = maxLiters > 0 ? Math.max(3, (day.liters / maxLiters) * 100) : 3;
+      fill.style.height = day.isFuture ? '4%' : pct + '%';
+      const label = document.createElement('div');
+      label.className = 'bar-day';
+      label.textContent = day.letter;
+      col.appendChild(val);
+      col.appendChild(fill);
+      col.appendChild(label);
+      els.chartBars.appendChild(col);
+    });
+  }
+
+  // CALENDÁRIO — grade do mês atual. Dia com dado salvo e cups >= meta
+  // vira "hit"; com dado e abaixo da meta vira "miss"; sem nenhum dado
+  // salvo (antes dela começar a usar o app, por exemplo) fica neutro
+  // em vez de parecer uma falha.
+  const MONTH_NAMES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+  function renderCalendar(){
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    els.calendarSub.textContent = `${MONTH_NAMES[month]} de ${year}`;
+
+    const firstDay = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const startWeekday = firstDay.getDay();
+
+    els.calendarGrid.innerHTML = '';
+    for(let i = 0; i < startWeekday; i++){
+      els.calendarGrid.appendChild(document.createElement('div'));
+    }
+    for(let day = 1; day <= daysInMonth; day++){
+      const d = new Date(year, month, day);
+      const key = dateKey(d);
+      const cell = document.createElement('div');
+      cell.className = 'cal-day';
+      cell.textContent = day;
+      if(d > today){
+        cell.classList.add('future');
+      } else if(state.history[key] !== undefined){
+        cell.classList.add(state.history[key] >= state.goal ? 'hit' : 'miss');
+      } else {
+        cell.classList.add('nodata');
+      }
+      els.calendarGrid.appendChild(cell);
+    }
+  }
+
+  function openOverlay(el){ el.classList.add('show'); }
+  function closeOverlay(el){ el.classList.remove('show'); }
+
+  els.pillStreak.addEventListener('click', () => { renderCalendar(); openOverlay(els.calendarOverlay); });
+  els.pillWeekAvg.addEventListener('click', () => { renderChart(); openOverlay(els.chartOverlay); });
+  els.chartClose.addEventListener('click', () => closeOverlay(els.chartOverlay));
+  els.calendarClose.addEventListener('click', () => closeOverlay(els.calendarOverlay));
+
   function randomMessage(){
     const text = MESSAGES[Math.floor(Math.random()*MESSAGES.length)];
     els.message.style.opacity = 0;
@@ -1042,6 +1296,7 @@
   els.drinkBtn.addEventListener('click', () => {
     state.cups += 1;
     state.week.days[state.day] = state.cups;
+    state.history[state.day] = state.cups;
     state.nextReminder = Date.now() + state.interval*60000;
     overdueFired = false;
     save();
