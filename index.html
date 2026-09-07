@@ -1446,13 +1446,16 @@
     let sub;
     try{
       const reg = await navigator.serviceWorker.ready;
-      sub = await reg.pushManager.getSubscription();
-      if(!sub){
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-        });
-      }
+      const existing = await reg.pushManager.getSubscription();
+      // Sempre força uma inscrição nova: o navegador pode ter uma
+      // guardada localmente que o servidor de push já considerou
+      // expirada (ex: depois de muito tempo, ou de reinstalar o
+      // app) — reaproveitar ela silenciosamente não resolve nada.
+      if(existing) await existing.unsubscribe();
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
     }catch(err){
       console.error('Falha ao criar inscrição:', err);
       els.notifText.textContent = 'Erro ao criar a inscrição: ' + err.message;
