@@ -679,6 +679,11 @@
       </div>
       <div class="stat-divider"></div>
       <div class="stat">
+        <div class="num" id="statStreak">0</div>
+        <div class="lbl">dias seguidos</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
         <div class="num" id="statGoal">8</div>
         <div class="lbl">meta diária</div>
       </div>
@@ -835,16 +840,23 @@
   }
 
   // Lê o progresso salvo. Se mudou o dia desde a última abertura,
-  // zera a contagem de copos pro novo dia.
+  // fecha o dia anterior: soma um dia ao streak se a meta foi batida,
+  // zera o streak se não foi, e reseta a contagem de copos.
   function loadState(){
     let s;
     try { s = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e){ s = null; }
     if(!s) s = {};
     if(s.day !== todayKey()){
+      if(s.cups !== undefined && s.goal !== undefined && s.cups >= s.goal){
+        s.streak = (s.streak||0) + 1;
+      } else if(s.day !== undefined){
+        s.streak = 0;
+      }
       s.cups = 0;
       s.day = todayKey();
     }
     s.cups = s.cups ?? 0;
+    s.streak = s.streak ?? 0;
     s.goal = s.goal ?? 8;
     s.interval = s.interval ?? 60;
     s.pushSynced = s.pushSynced ?? false;
@@ -857,6 +869,7 @@
 
   const els = {
     cups: document.getElementById('statCups'),
+    streak: document.getElementById('statStreak'),
     goal: document.getElementById('statGoal'),
     badge: document.getElementById('cupBadge'),
     wave: document.getElementById('wave'),
@@ -879,6 +892,7 @@
 
   function render(){
     els.cups.textContent = state.cups;
+    els.streak.textContent = state.streak;
     els.goal.textContent = state.goal;
     els.badge.textContent = state.cups;
 
@@ -975,7 +989,7 @@
     if(state.pushSynced) return;
     if('Notification' in window && Notification.permission === 'granted'){
       try{
-        new Notification('DaianaLife', {
+        new Notification('Lembrete', {
           body: text,
           icon: 'icons/icon-192.png',
           badge: 'icons/icon-192.png'
