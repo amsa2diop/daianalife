@@ -1,14 +1,7 @@
 {
   "subscriptions": [
     {
-      "subscription": {
-        "endpoint": "https://fcm.googleapis.com/fcm/send/dDo3VzUpkTo:APA91bHujL0RkHBzokn1g5b84BTIV-0TvhPWX6V8QhIZEO0_3EKkTbjt_k8fAvOQ8eA52Z5z6jncW1euOSKR9njfc9ibrxNn3TlmyY5_G4RE24FrxPGqOakwhj0mJYBGK-qeO6qrvqxx",
-        "expirationTime": null,
-        "keys": {
-          "p256dh": "BAy70j1y2g4nRNwDbuMVg8xba3bxgsG_sHy3Hqb-16hZgUvQabK80OxEIZo6ndcEEm98hI5uW9V1r0mNuLVkJ0o",
-          "auth": "qPsUMdewnO2kp0WiqwgmuA"
-        }
-      },
+      "subscription": null,
       "interval": 5,
       "nextReminder": 1788814251837
     },
