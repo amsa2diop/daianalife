@@ -716,8 +716,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>
     </div>
     <h2>Instale como app</h2>
-    <p>Pra abrir em tela cheia, com notificações de verdade e o ícone na Tela de Início: toque no botão <strong>Compartilhar</strong> (o quadrado com a seta pra cima) e depois em <strong>"Adicionar à Tela de Início"</strong>.</p>
-    <p>Não vê esse botão? Toque nos <strong>três pontinhos (⋯)</strong> no canto da tela — a mesma opção costuma estar escondida ali.</p>
+    <p>Pra abrir em tela cheia, com notificações de verdade e o ícone na Tela de Início: toque nos <strong>três pontinhos (⋯)</strong> ou no botão <strong>Compartilhar</strong> (o quadrado com a seta pra cima) e depois em <strong>"Adicionar à Tela de Início"</strong>.</p>
     <button class="install-close" id="installClose">entendi</button>
   </div>
 </div>
@@ -763,7 +762,6 @@
     <div class="droplet-badge" id="cupBadge">0</div>
   </div>
 
-  <div class="name-tag">Daiana</div>
   <div class="message" id="message">lindaaaa, bora beber uma água?</div>
 
   <div class="card">
@@ -968,6 +966,7 @@
     s.goal = s.goal ?? 8;
     s.interval = s.interval ?? 60;
     s.pushSynced = s.pushSynced ?? false;
+    s.myEndpoint = s.myEndpoint ?? null;
     s.nextReminder = s.nextReminder ?? (Date.now() + s.interval*60000);
     if(!s.week || s.week.key !== weekKey()){
       s.week = { key: weekKey(), days: {} };
@@ -1049,7 +1048,7 @@
     render();
     celebrate();
     if('Notification' in window && Notification.permission === 'granted'){
-      syncRemote({ nextReminder: state.nextReminder }).catch(()=>{});
+      syncRemote({ endpoint: state.myEndpoint, nextReminder: state.nextReminder }).catch(()=>{});
     }
   });
 
@@ -1061,7 +1060,7 @@
       save();
       render();
       if('Notification' in window && Notification.permission === 'granted'){
-        syncRemote({ interval: state.interval, nextReminder: state.nextReminder }).catch(()=>{});
+        syncRemote({ endpoint: state.myEndpoint, interval: state.interval, nextReminder: state.nextReminder }).catch(()=>{});
       }
     });
   });
@@ -1212,6 +1211,7 @@
         nextReminder: Date.now() + state.interval * 60000
       });
       state.pushSynced = true;
+      state.myEndpoint = sub.endpoint;
       save();
       els.notifText.textContent = 'Prontinho — notificação de verdade ativada.';
       updateNotifBtn();
