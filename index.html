@@ -311,12 +311,26 @@
   }
   .stat .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #7fa3ad; margin-top: 3px; }
   .stat-divider { width: 1px; height: 30px; background: #e7f3f6; }
-  .week-avg {
-    text-align: center;
-    font-size: 11px;
-    color: #8fb1ba;
-    margin: 8px 0 12px;
+  .chip-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-shrink: 0;
   }
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--foam);
+    box-shadow: var(--shadow);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--aqua-deep);
+  }
+  .chip-emoji { font-size: 12px; }
 
   .timer-box {
     background: linear-gradient(135deg, var(--sky-1), var(--sky-2));
@@ -652,6 +666,10 @@
   </div>
 
   <div class="middle">
+  <div class="chip-row">
+    <div class="chip"><span class="chip-emoji">🔥</span><span id="chipStreak">0 dias hidratada</span></div>
+    <div class="chip"><span class="chip-emoji">💧</span><span id="chipWeekAvg">0,0 L/dia</span></div>
+  </div>
   <div class="avatar-wrap">
     <svg class="ring-svg" viewBox="0 0 164 164">
       <defs>
@@ -685,17 +703,10 @@
       </div>
       <div class="stat-divider"></div>
       <div class="stat">
-        <div class="num" id="statStreak">0</div>
-        <div class="lbl">dias seguidos</div>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat">
         <div class="num" id="statGoal">8</div>
         <div class="lbl">meta diária</div>
       </div>
     </div>
-
-    <div class="week-avg" id="weekAvg">média da semana: 0,0 L/dia</div>
 
     <div class="timer-box">
       <div>
@@ -888,9 +899,9 @@
 
   const els = {
     cups: document.getElementById('statCups'),
-    streak: document.getElementById('statStreak'),
+    streak: document.getElementById('chipStreak'),
     goal: document.getElementById('statGoal'),
-    weekAvg: document.getElementById('weekAvg'),
+    weekAvg: document.getElementById('chipWeekAvg'),
     badge: document.getElementById('cupBadge'),
     wave: document.getElementById('wave'),
     ring: document.getElementById('ringProgress'),
@@ -912,7 +923,7 @@
 
   function render(){
     els.cups.textContent = state.cups;
-    els.streak.textContent = state.streak;
+    els.streak.textContent = `${state.streak} ${state.streak === 1 ? 'dia hidratada' : 'dias hidratada'}`;
     els.goal.textContent = state.goal;
     els.badge.textContent = state.cups;
 
@@ -926,7 +937,7 @@
     const dayValues = Object.values(state.week.days);
     const totalLiters = dayValues.reduce((sum, cups) => sum + cups * 0.25, 0);
     const avgLiters = dayValues.length ? totalLiters / dayValues.length : 0;
-    els.weekAvg.textContent = `média da semana: ${avgLiters.toFixed(1).replace('.', ',')} L/dia`;
+    els.weekAvg.textContent = `${avgLiters.toFixed(1).replace('.', ',')} L/dia`;
   }
 
   function randomMessage(){
