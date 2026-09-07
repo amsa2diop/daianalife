@@ -1,12 +1,28 @@
 {
-  "subscription": {
-    "endpoint": "https://fcm.googleapis.com/fcm/send/dDo3VzUpkTo:APA91bHujL0RkHBzokn1g5b84BTIV-0TvhPWX6V8QhIZEO0_3EKkTbjt_k8fAvOQ8eA52Z5z6jncW1euOSKR9njfc9ibrxNn3TlmyY5_G4RE24FrxPGqOakwhj0mJYBGK-qeO6qrvqxx",
-    "expirationTime": null,
-    "keys": {
-      "p256dh": "BAy70j1y2g4nRNwDbuMVg8xba3bxgsG_sHy3Hqb-16hZgUvQabK80OxEIZo6ndcEEm98hI5uW9V1r0mNuLVkJ0o",
-      "auth": "qPsUMdewnO2kp0WiqwgmuA"
+  "subscriptions": [
+    {
+      "subscription": {
+        "endpoint": "https://fcm.googleapis.com/fcm/send/dDo3VzUpkTo:APA91bHujL0RkHBzokn1g5b84BTIV-0TvhPWX6V8QhIZEO0_3EKkTbjt_k8fAvOQ8eA52Z5z6jncW1euOSKR9njfc9ibrxNn3TlmyY5_G4RE24FrxPGqOakwhj0mJYBGK-qeO6qrvqxx",
+        "expirationTime": null,
+        "keys": {
+          "p256dh": "BAy70j1y2g4nRNwDbuMVg8xba3bxgsG_sHy3Hqb-16hZgUvQabK80OxEIZo6ndcEEm98hI5uW9V1r0mNuLVkJ0o",
+          "auth": "qPsUMdewnO2kp0WiqwgmuA"
+        }
+      },
+      "interval": 5,
+      "nextReminder": 1788814251837
+    },
+    {
+      "subscription": {
+        "endpoint": "https://fcm.googleapis.com/fcm/send/dek6sBFY-Qg:APA91bEooiMwt5AvajN5m7-lJbvJbHmZMkzVWl95hDtnPuBQ_X1qoc8UTI9an2ZBOWnbZNQPyFtIIhMQqtP-54r4XxOe4tDo-Ar7VI4vACiHp9TMkO-o4cN4Wsm7lX4OomDrncEckPxa",
+        "expirationTime": null,
+        "keys": {
+          "p256dh": "BE20RylitO_Ij2ribxeTnRWahBrcgaMyzC0K1ISYPM1W7XD5t1VvnTEy4BHs-4uPXPHRZRDqKkavHKCFkNZEwTA",
+          "auth": "QEkSUdBbkHMds7KkB2TzTw"
+        }
+      },
+      "interval": 5,
+      "nextReminder": 1788815284819
     }
-  },
-  "interval": 5,
-  "nextReminder": 1788814251837
+  ]
 }
