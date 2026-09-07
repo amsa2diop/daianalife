@@ -1,11 +1,12 @@
 {
   "subscription": {
-    "endpoint": "https://web.push.apple.com/QFg__URIqROqs0sh8FsiL3LKgG6KvTDch2v_LQk6SMpnc0aYdzS182Iq0IJeliei8Q5Xnv7NxJ--RSxYJaKD3MDrPfwFUgHiUiUnakRrMwpfWYuKMwcMdl68_rqHdMSKnbIq-BYdxIPjTi4n4sXEanrMxy5HNUC5JOamt0wCBcw",
+    "endpoint": "https://fcm.googleapis.com/fcm/send/dDo3VzUpkTo:APA91bHujL0RkHBzokn1g5b84BTIV-0TvhPWX6V8QhIZEO0_3EKkTbjt_k8fAvOQ8eA52Z5z6jncW1euOSKR9njfc9ibrxNn3TlmyY5_G4RE24FrxPGqOakwhj0mJYBGK-qeO6qrvqxx",
+    "expirationTime": null,
     "keys": {
-      "p256dh": "BEMg0z_4UzsMk9d04o3hldUiRVcymC2IfgZjDSvHEiKbHSAZ1yV9Zua-IQEB1CnHsuvXdpu8luNDhhonE5q-h74",
-      "auth": "gkP3QVNCWX4LmPCTLWXMkQ"
+      "p256dh": "BAy70j1y2g4nRNwDbuMVg8xba3bxgsG_sHy3Hqb-16hZgUvQabK80OxEIZo6ndcEEm98hI5uW9V1r0mNuLVkJ0o",
+      "auth": "qPsUMdewnO2kp0WiqwgmuA"
     }
   },
-  "interval": 30,
-  "nextReminder": 1788813030324
+  "interval": 60,
+  "nextReminder": 1788816715151
 }
