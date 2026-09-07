@@ -103,7 +103,7 @@
     justify-content: center;
     gap: 8px;
     padding: 4px 10px max(4px, env(safe-area-inset-bottom));
-    background-color: #ff00ff;
+    background-color: #ffffff;
     z-index: 6;
   }
   .tab-btn {
@@ -641,6 +641,60 @@
     border-bottom: 1px solid #dbe9ee;
   }
 
+  .install-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(22, 58, 68, 0.55);
+    z-index: 20;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .install-overlay.show { display: flex; }
+  .install-card {
+    background: var(--foam);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    padding: 26px 22px 20px;
+    max-width: 320px;
+    text-align: center;
+  }
+  .install-icon {
+    width: 48px; height: 48px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    background: var(--sky-1);
+    color: var(--aqua-deep);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .install-icon svg { width: 24px; height: 24px; }
+  .install-card h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 18px;
+    margin: 0 0 8px;
+    color: var(--ink);
+  }
+  .install-card p {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--aqua-deep);
+    margin: 0 0 18px;
+  }
+  .install-card strong { color: var(--ink); }
+  .install-close {
+    width: 100%;
+    border: none;
+    background: linear-gradient(135deg, var(--aqua), var(--aqua-deep));
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 11px;
+    border-radius: 13px;
+    cursor: pointer;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .bubble, .wave svg { animation: none !important; }
   }
@@ -655,6 +709,17 @@
 <body>
 
 <div class="bubbles" id="bubbles"></div>
+
+<div class="install-overlay" id="installOverlay">
+  <div class="install-card">
+    <div class="install-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>
+    </div>
+    <h2>Instala como app</h2>
+    <p>Pra abrir em tela cheia, com lembretes de verdade e o ícone na Tela de Início, toca no botão <strong>Compartilhar</strong> aqui embaixo do Safari e depois em <strong>"Adicionar à Tela de Início"</strong>.</p>
+    <button class="install-close" id="installClose">entendi</button>
+  </div>
+</div>
 
 <div class="shell">
 <div class="views">
@@ -823,6 +888,17 @@
   window.addEventListener('resize', setRealVh);
   window.addEventListener('orientationchange', setRealVh);
 
+  // Mostra o aviso de "adicionar à tela de início" só quando o app
+  // está rodando dentro de uma aba normal do Safari — window.navigator
+  // .standalone é true quando já foi aberto pelo ícone instalado.
+  // Sem instalar assim, notificação de verdade nem funciona no iOS.
+  if(!window.navigator.standalone){
+    document.getElementById('installOverlay').classList.add('show');
+  }
+  document.getElementById('installClose').addEventListener('click', () => {
+    document.getElementById('installOverlay').classList.remove('show');
+  });
+
   // Tudo é guardado no localStorage do navegador, só nesse aparelho —
   // não tem servidor nem conta, então cada instalação tem seu próprio
   // progresso. Ver loadState()/save() logo abaixo.
@@ -967,6 +1043,7 @@
     state.cups += 1;
     state.week.days[state.day] = state.cups;
     state.nextReminder = Date.now() + state.interval*60000;
+    overdueFired = false;
     save();
     render();
     celebrate();
@@ -979,6 +1056,7 @@
     chip.addEventListener('click', () => {
       state.interval = Number(chip.dataset.min);
       state.nextReminder = Date.now() + state.interval*60000;
+      overdueFired = false;
       save();
       render();
       if('Notification' in window && Notification.permission === 'granted'){
@@ -1009,14 +1087,18 @@
 
   // Roda a cada segundo: atualiza o relógio regressivo e, quando chega
   // a zero, dispara o lembrete e reagenda pro próximo intervalo.
+  let overdueFired = false;
   function tick(){
-    let remaining = state.nextReminder - Date.now();
+    const remaining = state.nextReminder - Date.now();
     if(remaining <= 0){
-      fireReminder();
-      state.nextReminder = Date.now() + state.interval*60000;
-      save();
-      remaining = state.nextReminder - Date.now();
+      if(!overdueFired){
+        fireReminder();
+        overdueFired = true;
+      }
+      els.countdown.textContent = 'agora!';
+      return;
     }
+    overdueFired = false;
     const mins = Math.floor(remaining/60000);
     const secs = Math.floor((remaining%60000)/1000);
     els.countdown.textContent = String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0');
