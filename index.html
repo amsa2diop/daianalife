@@ -311,6 +311,12 @@
   }
   .stat .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #7fa3ad; margin-top: 3px; }
   .stat-divider { width: 1px; height: 30px; background: #e7f3f6; }
+  .week-avg {
+    text-align: center;
+    font-size: 11px;
+    color: #8fb1ba;
+    margin: 8px 0 12px;
+  }
 
   .timer-box {
     background: linear-gradient(135deg, var(--sky-1), var(--sky-2));
@@ -689,6 +695,8 @@
       </div>
     </div>
 
+    <div class="week-avg" id="weekAvg">média da semana: 0,0 L/dia</div>
+
     <div class="timer-box">
       <div>
         <div class="label">próximo lembrete em</div>
@@ -839,6 +847,13 @@
     return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
   }
 
+  // Um número que muda a cada 7 dias — usado só pra saber quando
+  // zerar a média semanal de litros. Não precisa bater exatamente
+  // com segunda-feira, só precisa resetar de forma consistente.
+  function weekKey(){
+    return Math.floor(Date.now() / (7*24*60*60*1000));
+  }
+
   // Lê o progresso salvo. Se mudou o dia desde a última abertura,
   // fecha o dia anterior: soma um dia ao streak se a meta foi batida,
   // zera o streak se não foi, e reseta a contagem de copos.
@@ -861,6 +876,10 @@
     s.interval = s.interval ?? 60;
     s.pushSynced = s.pushSynced ?? false;
     s.nextReminder = s.nextReminder ?? (Date.now() + s.interval*60000);
+    if(!s.week || s.week.key !== weekKey()){
+      s.week = { key: weekKey(), days: {} };
+    }
+    s.week.days[s.day] = s.cups;
     return s;
   }
 
@@ -871,6 +890,7 @@
     cups: document.getElementById('statCups'),
     streak: document.getElementById('statStreak'),
     goal: document.getElementById('statGoal'),
+    weekAvg: document.getElementById('weekAvg'),
     badge: document.getElementById('cupBadge'),
     wave: document.getElementById('wave'),
     ring: document.getElementById('ringProgress'),
@@ -902,6 +922,11 @@
 
     els.intervalChips.forEach(c => c.classList.toggle('active', Number(c.dataset.min) === state.interval));
     els.goalChips.forEach(c => c.classList.toggle('active', Number(c.dataset.goal) === state.goal));
+
+    const dayValues = Object.values(state.week.days);
+    const totalLiters = dayValues.reduce((sum, cups) => sum + cups * 0.25, 0);
+    const avgLiters = dayValues.length ? totalLiters / dayValues.length : 0;
+    els.weekAvg.textContent = `média da semana: ${avgLiters.toFixed(1).replace('.', ',')} L/dia`;
   }
 
   function randomMessage(){
@@ -924,6 +949,7 @@
 
   els.drinkBtn.addEventListener('click', () => {
     state.cups += 1;
+    state.week.days[state.day] = state.cups;
     state.nextReminder = Date.now() + state.interval*60000;
     save();
     render();
