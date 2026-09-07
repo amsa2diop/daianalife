@@ -60,6 +60,7 @@
     background: radial-gradient(circle at 20% -10%, #ffffff 0%, var(--sky-1) 45%, var(--sky-2) 100%);
     height: 100vh;
     height: 100dvh;
+    height: calc(var(--vh, 1vh) * 100);
     display: flex;
     justify-content: center;
     overflow: hidden;
@@ -779,6 +780,20 @@
 
 <script>
 (function(){
+  // FIX DE ALTURA REAL DA TELA
+  // Em alguns iPhones, 100dvh dentro de um PWA instalado (modo
+  // standalone) não bate exatamente com a altura real da tela —
+  // sobra uma tirinha de fundo do sistema visível embaixo, mesmo o
+  // app parecendo "cheio". Calculando a altura de verdade em JS e
+  // guardando numa variável CSS resolve isso de vez. Roda de novo em
+  // resize/orientationchange pra acompanhar mudanças (teclado, giro).
+  function setRealVh(){
+    document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+  }
+  setRealVh();
+  window.addEventListener('resize', setRealVh);
+  window.addEventListener('orientationchange', setRealVh);
+
   // Tudo é guardado no localStorage do navegador, só nesse aparelho —
   // não tem servidor nem conta, então cada instalação tem seu próprio
   // progresso. Ver loadState()/save() logo abaixo.
