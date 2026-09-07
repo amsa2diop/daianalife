@@ -999,6 +999,7 @@
     <button class="notif-btn" id="notifBtn">ativar</button>
   </div>
   <p class="fine-print" id="atalhoNote">Esse lembrete agora chega de verdade, mesmo com o app fechado — um serviço nos bastidores confere a cada 15 minutos se está na hora. Por causa disso, o horário pode variar até uns 15 minutos pra mais, nunca exatamente no segundo certo.</p>
+  <p class="fine-print">Se a notificação parar de chegar por algum motivo, toca de novo em "ativado" — pode tocar mesmo já estando ativo, não tem problema, ele renova sozinho.</p>
 
   <div class="reset-row">
     <button class="reset-btn" id="resetBtn">zerar o app</button>
@@ -1435,13 +1436,14 @@
   }
 
   async function enablePush(){
+    els.notifBtn.textContent = 'ativando...';
     if(!('serviceWorker' in navigator) || !('PushManager' in window)){
       els.notifText.textContent = 'Isso só funciona abrindo o app pelo ícone da Tela de Início, não pelo link do Safari. Se já adicionou, feche e abra de novo por ali.';
+      updateNotifBtn();
       return;
     }
     const perm = await Notification.requestPermission();
-    updateNotifBtn();
-    if(perm !== 'granted') return;
+    if(perm !== 'granted'){ updateNotifBtn(); return; }
 
     let sub;
     try{
