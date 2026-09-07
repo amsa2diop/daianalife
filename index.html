@@ -119,7 +119,7 @@
   }
   .tab-btn svg { width: 17px; height: 17px; }
   .tab-btn.active { color: var(--aqua-deep); }
-  .tab-icon-wrap { position: relative; }
+  .tab-icon-wrap { position: relative; display: inline-flex; line-height: 0; }
   .tab-badge {
     position: absolute;
     top: -4px; right: -8px;
@@ -315,7 +315,7 @@
     display: flex;
     justify-content: center;
     gap: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 18px;
     flex-shrink: 0;
   }
   .chip {
@@ -331,6 +331,7 @@
     color: var(--aqua-deep);
   }
   .chip-emoji { font-size: 12px; }
+  .chip svg { width: 14px; height: 14px; flex-shrink: 0; }
 
   .timer-box {
     background: linear-gradient(135deg, var(--sky-1), var(--sky-2));
@@ -667,8 +668,8 @@
 
   <div class="middle">
   <div class="chip-row">
-    <div class="chip"><span class="chip-emoji">🔥</span><span id="chipStreak">0 dias hidratada</span></div>
-    <div class="chip"><span class="chip-emoji">💧</span><span id="chipWeekAvg">0,0 L/dia</span></div>
+    <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.5 16.5a2 2 0 0 1-2 1.5H9.5a2 2 0 0 1-2-1.5L6 3Z"/><path d="M6.5 9h11"/></svg><span id="chipStreak">0 dias hidratada</span></div>
+    <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5s7 7.4 7 12a7 7 0 1 1-14 0c0-4.6 7-12 7-12Z"/></svg><span id="chipWeekAvg">0,0 L/dia</span></div>
   </div>
   <div class="avatar-wrap">
     <svg class="ring-svg" viewBox="0 0 164 164">
