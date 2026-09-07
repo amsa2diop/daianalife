@@ -966,18 +966,16 @@
     els.countdown.textContent = String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0');
   }
 
-  // Troca a mensagem na tela e, se a permissão de notificação estiver
-  // concedida, dispara uma notificação nativa.
-  // Importante: isso só funciona de forma confiável enquanto o app
-  // está aberto (ou foi fechado há pouco tempo) — o iOS suspende o
-  // JavaScript de apps em segundo plano depois de um tempo, então
-  // não há garantia de disparo com o app fechado por horas. Ver o
-  // texto explicativo perto do botão de notificação, no HTML.
+  // Troca a mensagem na tela. Só dispara notificação local (a que
+  // depende do app estar aberto) se o push de verdade ainda não foi
+  // ativado — depois disso ele cobre esse papel sozinho, e manter os
+  // dois causa notificação duplicada bem na hora de abrir o app.
   function fireReminder(){
     const text = randomMessage();
+    if(state.pushSynced) return;
     if('Notification' in window && Notification.permission === 'granted'){
       try{
-        new Notification('💧', {
+        new Notification('DaianaLife', {
           body: text,
           icon: 'icons/icon-192.png',
           badge: 'icons/icon-192.png'
