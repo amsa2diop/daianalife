@@ -1,11 +1,6 @@
 {
   "subscriptions": [
     {
-      "subscription": null,
-      "interval": 5,
-      "nextReminder": 1788814251837
-    },
-    {
       "subscription": {
         "endpoint": "https://fcm.googleapis.com/fcm/send/dek6sBFY-Qg:APA91bEooiMwt5AvajN5m7-lJbvJbHmZMkzVWl95hDtnPuBQ_X1qoc8UTI9an2ZBOWnbZNQPyFtIIhMQqtP-54r4XxOe4tDo-Ar7VI4vACiHp9TMkO-o4cN4Wsm7lX4OomDrncEckPxa",
         "expirationTime": null,
