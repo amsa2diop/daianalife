@@ -831,7 +831,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v14"/></svg>
     </div>
     <h2>Instale como app</h2>
-    <p>Pra abrir em tela cheia, com notificações de verdade e o ícone na Tela de Início: toque nos <strong>três pontinhos (⋯)</strong> ou no botão <strong>Compartilhar</strong> (o quadrado com a seta pra cima) e depois em <strong>"Adicionar à Tela de Início"</strong>.</p>
+    <p>Pra abrir em tela cheia, com notificações e o ícone na Tela de Início: toque nos <strong>três pontinhos (⋯)</strong>, depois em <strong>Compartilhar</strong> (o quadrado com a seta pra cima), e depois em <strong>"Adicionar à Tela de Início"</strong>.</p>
     <button class="install-close" id="installClose">entendi</button>
   </div>
 </div>
@@ -977,10 +977,7 @@
   <div class="sheet-handle"></div>
   <h2>De quanto em quanto tempo?</h2>
   <div class="chip-row" id="intervalChips">
-    <div class="chip" data-min="5">5 min</div>
-    <div class="chip" data-min="15">15 min</div>
     <div class="chip" data-min="30">30 min</div>
-    <div class="chip" data-min="45">45 min</div>
     <div class="chip active" data-min="60">1 hora</div>
     <div class="chip" data-min="90">1h30</div>
     <div class="chip" data-min="120">2 horas</div>
@@ -995,11 +992,10 @@
   </div>
 
   <div class="notif-row">
-    <p id="notifText">Ativa as notificações pra eu te lembrar de verdade, mesmo com o app fechado</p>
+    <p id="notifText">Ativa as notificações pra eu te lembrar, mesmo com o app fechado</p>
     <button class="notif-btn" id="notifBtn">ativar</button>
   </div>
-  <p class="fine-print" id="atalhoNote">Esse lembrete agora chega de verdade, mesmo com o app fechado — um serviço nos bastidores confere a cada 15 minutos se está na hora. Por causa disso, o horário pode variar até uns 15 minutos pra mais, nunca exatamente no segundo certo.</p>
-  <p class="fine-print">Se a notificação parar de chegar por algum motivo, toca de novo em "ativado" — pode tocar mesmo já estando ativo, não tem problema, ele renova sozinho.</p>
+  <p class="fine-print">Se a notificação parar de chegar por algum motivo, toca de novo em "ativado".</p>
 
   <div class="reset-row">
     <button class="reset-btn" id="resetBtn">zerar o app</button>
@@ -1472,7 +1468,7 @@
       state.pushSynced = true;
       state.myEndpoint = sub.endpoint;
       save();
-      els.notifText.textContent = 'Prontinho — notificação de verdade ativada.';
+      els.notifText.textContent = 'Prontinho — notificação ativada.';
       updateNotifBtn();
     }catch(err){
       console.error('Falha ao ativar push:', err);
