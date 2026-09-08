@@ -22,6 +22,20 @@
       },
       "interval": 5,
       "nextReminder": 1788826248984
+    },
+    {
+      "subscription": {
+        "endpoint": "https://web.push.apple.com/QPJ64qTi6aQ6IG7iltZppjtu9mUBPQcWwnNcIlGZfEtGnFy6O3kTSMkU1B3b9XZdNHY7l46BrHy15NYUEi8kh4nms1D1Brfip1fc7D5TmXA5bLBQXOTIG0v-Wp3ow_GxV7VR6AhHvTI3Pn8wcGl1-B7-a8VxWoN70IYfz1840eE",
+        "keys": {
+          "p256dh": "BBIZylbmU30p0K41CvJeiL_lqctupkQDCfk-Jm80MdQXPMBmCcJ7O3eES35cIuRx2VwsO_JWPJbSfAFC_lbPOWs",
+          "auth": "iOWAipXrmc5I8kO01-rSxg"
+        }
+      },
+      "interval": 60,
+      "nextReminder": 1788872120352,
+      "lastSeen": 1788868520352,
+      "activeFrom": 8,
+      "activeTo": 24
     }
   ]
 }
