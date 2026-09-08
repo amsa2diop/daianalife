@@ -1369,8 +1369,7 @@
     if(state.pushSynced) return;
     if('Notification' in window && Notification.permission === 'granted'){
       try{
-        new Notification('Lembrete', {
-          body: text,
+        new Notification(text, {
           icon: 'icons/icon-192.png',
           badge: 'icons/icon-192.png'
         });

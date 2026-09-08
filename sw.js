@@ -54,7 +54,7 @@ self.addEventListener('fetch', (e) => {
 // fechado. Isso é diferente da notificação local que o próprio app
 // dispara quando está aberto (ver fireReminder() no index.html).
 self.addEventListener('push', (e) => {
-  let data = { title: 'Lembrete', body: 'oi, linda. bora beber uma água?' };
+  let data = { title: 'oi, linda. bora beber uma água?', body: '' };
   try { if(e.data) data = { ...data, ...e.data.json() }; } catch(err){}
 
   e.waitUntil(
