@@ -882,7 +882,7 @@
     <h2>Como funciona</h2>
     <ul class="tour-list">
       <li>Toca em <strong>"Bebi um copo!"</strong> toda vez que beber água</li>
-      <li>As <strong>pílulas</strong> acima da foto mostram seus dias hidratada e a média da semana — toca nelas pra ver o gráfico e o calendário</li>
+      <li>As <strong>pílulas</strong> acima da foto mostram seus dias hidratada e a média da semana — toque nelas pra ver o gráfico e o calendário</li>
       <li>A aba <strong>"listas"</strong>, embaixo, guarda compras e afazeres</li>
       <li>A <strong>engrenagem</strong>, no topo, muda intervalo, meta e notificações</li>
     </ul>
@@ -1046,7 +1046,7 @@
     <div class="chip" data-goal="12">12</div>
   </div>
 
-  <h2>Não notificar durante a madrugada</h2>
+  <h2>Notificar entre</h2>
   <div class="hours-row">
     <select id="activeFrom" class="hour-select"></select>
     <span>até</span>
@@ -1057,7 +1057,7 @@
     <p id="notifText">Ativa as notificações pra eu te lembrar, mesmo com o app fechado</p>
     <button class="notif-btn" id="notifBtn">ativar</button>
   </div>
-  <p class="fine-print">Se a notificação parar de chegar por algum motivo, toca de novo em "ativado".</p>
+  <p class="fine-print">Se a notificação parar de chegar por algum motivo, toque de novo em "ativado".</p>
 
   <div class="reset-row">
     <button class="reset-btn" id="resetBtn">zerar o app</button>
@@ -1505,7 +1505,7 @@
       els.notifBtn.textContent = 'ativado';
       els.notifBtn.classList.add('on');
     } else if(Notification.permission === 'granted' && !state.pushSynced){
-      els.notifBtn.textContent = 'toca aqui';
+      els.notifBtn.textContent = 'toque aqui';
       els.notifBtn.classList.remove('on');
       els.notifText.textContent = 'Falta só um toque: a permissão já existe, mas ainda falta registrar de vez.';
     } else if (Notification.permission === 'denied') {
@@ -1612,7 +1612,7 @@
   els.resetBtn.addEventListener('click', () => {
     if(!resetArmed){
       resetArmed = true;
-      els.resetBtn.textContent = 'toca de novo pra confirmar';
+      els.resetBtn.textContent = 'toque de novo pra confirmar';
       resetTimer = setTimeout(() => {
         resetArmed = false;
         els.resetBtn.textContent = 'zerar o app';
