@@ -447,6 +447,24 @@
   }
   .chip.active { background: var(--blush-soft); border-color: var(--blush); color: #c23b5c; }
 
+  .hours-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--aqua-deep);
+    font-weight: 600;
+  }
+  .hour-select {
+    background: var(--sky-1);
+    color: var(--aqua-deep);
+    border: none;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+  }
   .notif-row {
     display: flex;
     align-items: center;
@@ -685,6 +703,26 @@
     color: var(--aqua-deep);
     margin: 0 0 18px;
   }
+  .tour-list {
+    text-align: left;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--aqua-deep);
+    margin: 0 0 18px;
+    padding-left: 18px;
+  }
+  .tour-list li { margin-bottom: 8px; }
+  .tour-list strong { color: var(--ink); }
+  .tour-skip {
+    width: 100%;
+    border: none;
+    background: none;
+    color: #9cc0c9;
+    font-weight: 700;
+    font-size: 12.5px;
+    padding: 10px;
+    cursor: pointer;
+  }
   .install-card strong { color: var(--ink); }
   .install-close {
     width: 100%;
@@ -833,6 +871,23 @@
     <h2>Instale como app</h2>
     <p>Pra abrir em tela cheia, com notificações e o ícone na Tela de Início: toque nos <strong>três pontinhos (⋯)</strong>, depois em <strong>Compartilhar</strong> (o quadrado com a seta pra cima), e depois em <strong>"Adicionar à Tela de Início"</strong>.</p>
     <button class="install-close" id="installClose">entendi</button>
+  </div>
+</div>
+
+<div class="install-overlay" id="tourOverlay">
+  <div class="install-card">
+    <div class="install-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5s7 7.4 7 12a7 7 0 1 1-14 0c0-4.6 7-12 7-12Z"/></svg>
+    </div>
+    <h2>Como funciona</h2>
+    <ul class="tour-list">
+      <li>Toca em <strong>"Bebi um copo!"</strong> toda vez que beber água</li>
+      <li>As <strong>pílulas</strong> acima da foto mostram seus dias hidratada e a média da semana — toca nelas pra ver o gráfico e o calendário</li>
+      <li>A aba <strong>"listas"</strong>, embaixo, guarda compras e afazeres</li>
+      <li>A <strong>engrenagem</strong>, no topo, muda intervalo, meta e notificações</li>
+    </ul>
+    <button class="install-close" id="tourActivate">ativar notificações agora</button>
+    <button class="tour-skip" id="tourSkip">deixo pra depois</button>
   </div>
 </div>
 
@@ -991,6 +1046,13 @@
     <div class="chip" data-goal="12">12</div>
   </div>
 
+  <h2>Não notificar durante a madrugada</h2>
+  <div class="hours-row">
+    <select id="activeFrom" class="hour-select"></select>
+    <span>até</span>
+    <select id="activeTo" class="hour-select"></select>
+  </div>
+
   <div class="notif-row">
     <p id="notifText">Ativa as notificações pra eu te lembrar, mesmo com o app fechado</p>
     <button class="notif-btn" id="notifBtn">ativar</button>
@@ -1029,6 +1091,23 @@
   }
   document.getElementById('installClose').addEventListener('click', () => {
     document.getElementById('installOverlay').classList.remove('show');
+  });
+
+  // Tour de boas-vindas — só na primeira vez que abre já instalado
+  // (pelo ícone da Tela de Início). Termina puxando direto pra ativar
+  // notificação, em vez de deixar ela lembrar sozinha depois.
+  const TOUR_SEEN_KEY = 'daianalife_tour_seen';
+  if(window.navigator.standalone && !localStorage.getItem(TOUR_SEEN_KEY)){
+    document.getElementById('tourOverlay').classList.add('show');
+  }
+  function dismissTour(){
+    localStorage.setItem(TOUR_SEEN_KEY, '1');
+    document.getElementById('tourOverlay').classList.remove('show');
+  }
+  document.getElementById('tourSkip').addEventListener('click', dismissTour);
+  document.getElementById('tourActivate').addEventListener('click', () => {
+    dismissTour();
+    enablePush();
   });
 
   // Tudo é guardado no localStorage do navegador, só nesse aparelho —
@@ -1103,6 +1182,8 @@
     s.interval = s.interval ?? 60;
     s.pushSynced = s.pushSynced ?? false;
     s.myEndpoint = s.myEndpoint ?? null;
+    s.activeFrom = s.activeFrom ?? 8;
+    s.activeTo = s.activeTo ?? 24;
     s.nextReminder = s.nextReminder ?? (Date.now() + s.interval*60000);
     if(!s.week || s.week.key !== weekKey()){
       s.week = { key: weekKey(), days: {} };
@@ -1127,6 +1208,8 @@
     goal: document.getElementById('statGoal'),
     weekAvg: document.getElementById('chipWeekAvg'),
     pillStreak: document.getElementById('pillStreak'),
+    activeFrom: document.getElementById('activeFrom'),
+    activeTo: document.getElementById('activeTo'),
     pillWeekAvg: document.getElementById('pillWeekAvg'),
     chartOverlay: document.getElementById('chartOverlay'),
     chartSub: document.getElementById('chartSub'),
@@ -1325,6 +1408,44 @@
     });
   });
 
+  // MODO SONO — os dois <select> de hora. activeFrom vai de 0 a 23;
+  // activeTo vai de 1 a 24, onde 24 representa meia-noite (fim do
+  // dia) — assim dá pra escolher "das 8h até meia-noite" sem
+  // ambiguidade com "das 8h até 0h" (que pareceria durar 0 minutos).
+  function hourLabel(h){
+    const shown = h === 24 ? 0 : h;
+    return String(shown).padStart(2, '0') + ':00';
+  }
+  function fillHourSelect(select, min, max){
+    select.innerHTML = '';
+    for(let h = min; h <= max; h++){
+      const opt = document.createElement('option');
+      opt.value = h;
+      opt.textContent = hourLabel(h);
+      select.appendChild(opt);
+    }
+  }
+  fillHourSelect(els.activeFrom, 0, 23);
+  fillHourSelect(els.activeTo, 1, 24);
+  els.activeFrom.value = state.activeFrom;
+  els.activeTo.value = state.activeTo;
+
+  function syncActiveHours(){
+    if(state.pushSynced && state.myEndpoint){
+      syncRemote({ endpoint: state.myEndpoint, activeFrom: state.activeFrom, activeTo: state.activeTo }).catch(()=>{});
+    }
+  }
+  els.activeFrom.addEventListener('change', () => {
+    state.activeFrom = Number(els.activeFrom.value);
+    save();
+    syncActiveHours();
+  });
+  els.activeTo.addEventListener('change', () => {
+    state.activeTo = Number(els.activeTo.value);
+    save();
+    syncActiveHours();
+  });
+
   function openSheet(){
     els.sheet.classList.add('open');
     els.sheetBackdrop.classList.add('open');
@@ -1365,7 +1486,8 @@
     if(state.pushSynced) return;
     if('Notification' in window && Notification.permission === 'granted'){
       try{
-        new Notification(text, {
+        new Notification('', {
+          body: text,
           icon: 'icons/icon-192.png',
           badge: 'icons/icon-192.png'
         });
@@ -1463,7 +1585,10 @@
       await syncRemote({
         subscription: sub.toJSON(),
         interval: state.interval,
-        nextReminder: Date.now() + state.interval * 60000
+        nextReminder: Date.now() + state.interval * 60000,
+        lastSeen: Date.now(),
+        activeFrom: state.activeFrom,
+        activeTo: state.activeTo
       });
       state.pushSynced = true;
       state.myEndpoint = sub.endpoint;
@@ -1716,6 +1841,19 @@
   randomMessage();
   tick();
   setInterval(tick, 1000);
+
+  // Avisa o Worker que esse aparelho ainda está em uso, no máximo uma
+  // vez por dia — é o que permite parar de notificar sozinho um
+  // aparelho que ela trocou ou parou de usar (ver README do worker).
+  const LAST_SEEN_PING_KEY = 'daianalife_last_seen_ping';
+  if(state.pushSynced && state.myEndpoint){
+    const lastPing = Number(localStorage.getItem(LAST_SEEN_PING_KEY) || 0);
+    if(Date.now() - lastPing > 20*60*60*1000){
+      syncRemote({ endpoint: state.myEndpoint, lastSeen: Date.now() })
+        .then(() => localStorage.setItem(LAST_SEEN_PING_KEY, String(Date.now())))
+        .catch(() => {});
+    }
+  }
 
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
