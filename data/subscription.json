@@ -1,3 +1,18 @@
 {
-  "subscriptions": []
+  "subscriptions": [
+    {
+      "subscription": {
+        "endpoint": "https://web.push.apple.com/QA2-nX8IWOshGN3jVqAhIp_pm4hTMoMGcYyrMoemKvknMJbuOPX2UT3YnaiXttg4l5JIE5QFVHTf0fQ3TtkcnCCZOmngvmEUzZUWPdhKobuNLlHEz5dF8cZJAIOmmn7Wh5IO8EGlLb6TegkkGCwft3FGGarK99lFpt9oYujkmaM",
+        "keys": {
+          "p256dh": "BOL2uJkqCQgXFuIo_HTzgxtnX3EdODmrF4n60R_byjfx9LZEnDl5A5IQJPGWk_Eks8ey_ywQEe0ryef2pX1N4EU",
+          "auth": "8_x_8wzRhLSaqtVxabjBdQ"
+        }
+      },
+      "interval": 90,
+      "nextReminder": 1789061679603,
+      "lastSeen": 1789056279603,
+      "activeFrom": 8,
+      "activeTo": 23
+    }
+  ]
 }
