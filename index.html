@@ -1669,6 +1669,14 @@
     const badge = document.getElementById('listsBadge');
     badge.textContent = total > 99 ? '99+' : String(total);
     badge.classList.toggle('show', total > 0);
+
+    // Badge de verdade no ícone do app (fora, na Tela de Início) —
+    // suportado no Safari desde o iOS 16.4 pra apps instalados. Não é
+    // só pra notificação; qualquer número pode ser mostrado assim.
+    if('setAppBadge' in navigator){
+      if(total > 0) navigator.setAppBadge(total).catch(()=>{});
+      else navigator.clearAppBadge().catch(()=>{});
+    }
   }
 
   function renderList(key){
