@@ -22,8 +22,8 @@
           "auth": "X3SpeULOsoDFU5DMpFeO6Q"
         }
       },
-      "interval": 60,
-      "nextReminder": 1789481529732,
+      "interval": 90,
+      "nextReminder": 1789483388545,
       "lastSeen": 1789477927407,
       "activeFrom": 8,
       "activeTo": 24
