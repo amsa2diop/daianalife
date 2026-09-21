@@ -22,8 +22,8 @@
           "auth": "axi1LGuTe1_58qMFfi41XA"
         }
       },
-      "interval": 120,
-      "nextReminder": 1790013051228,
+      "interval": 30,
+      "nextReminder": 1790007675938,
       "lastSeen": 1790005851228,
       "activeFrom": 8,
       "activeTo": 23
