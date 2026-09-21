@@ -19,6 +19,11 @@
       "interval": 60,
       "nextReminder": null,
       "lastSeen": 1789953091875
+    },
+    {
+      "subscription": null,
+      "interval": 60,
+      "nextReminder": 1789960294127
     }
   ]
 }
