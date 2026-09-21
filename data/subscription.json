@@ -13,6 +13,20 @@
       "lastSeen": 1789910461398,
       "activeFrom": 8,
       "activeTo": 24
+    },
+    {
+      "subscription": {
+        "endpoint": "https://web.push.apple.com/QO-pqyb3vmPO_IDg7E4AOLDUxbl3fajGAvNF-lUuLvbZIgXSjX26-xEhwVUh63LN67a8Gvmpi8Z3U7jmk79mRVWwoOggz6foVNB_SxeN3ApyZdh7eVrool9jUvHlDr5lutbb9U-Ouz4Bs3A_MmpTg9MkGMAxPdpdPq3u64WROHY",
+        "keys": {
+          "p256dh": "BGHWp8KugjIxzc2aXhOdcaca5Qh-_f9aVwOMWfQyDduDgtyjHWOUyNvT3VFNKub52MWCbiZzFP-xU9ioXQq73-M",
+          "auth": "axi1LGuTe1_58qMFfi41XA"
+        }
+      },
+      "interval": 120,
+      "nextReminder": 1790013051228,
+      "lastSeen": 1790005851228,
+      "activeFrom": 8,
+      "activeTo": 23
     }
   ]
 }
