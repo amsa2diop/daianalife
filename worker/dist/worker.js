@@ -454,10 +454,13 @@ async function processOne(entry, reminders, now, env) {
 var TZ_OFFSET_MIN = -180;
 var EVE_AT = 19 * 60;
 var MORNING_AT = 8 * 60 + 30;
+var HOURS_BEFORE_MIN = 120;
 var BEFORE_MIN = 40;
 var ALARM_BEFORE_MIN = 15;
 var LATE_GRACE_MIN = 180;
-var REPEATS = ["once", "weekly", "biweekly", "monthly"];
+var REPEATS = ["once", "daily", "weekly", "biweekly", "monthly"];
+var REMIND_KINDS = ["eve", "morning", "hours", "before"];
+var DEFAULT_REMIND = ["eve", "morning", "before"];
 var DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 var TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 function nowToLocalMin(nowMs) {
@@ -476,17 +479,24 @@ function minOfTimeStr(s) {
   const m = TIME_RE.exec(s);
   return m ? +m[1] * 60 + +m[2] : null;
 }
+function dowOfDn(dn) {
+  return new Date(dn * 864e5).getUTCDay();
+}
 function sanitizeRoutine(r) {
   if (!r || typeof r !== "object") return null;
   const id = String(r.id || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40);
   if (!id) return null;
   const title = String(r.title || "").replace(/\s+/g, " ").trim().slice(0, 80);
   if (!title) return null;
-  if (dayOfDateStr(r.start) === null) return null;
+  const startDn = dayOfDateStr(r.start);
+  if (startDn === null) return null;
   if (minOfTimeStr(r.time) === null) return null;
   const repeat = REPEATS.includes(r.repeat) ? r.repeat : "once";
   const createdAt = Number.isFinite(r.createdAt) ? r.createdAt : 0;
-  return { id, title, start: r.start, time: r.time, repeat, createdAt };
+  let days = Array.isArray(r.days) ? [...new Set(r.days.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort() : [];
+  if (!days.length) days = [dowOfDn(startDn)];
+  const remind = Array.isArray(r.remind) ? REMIND_KINDS.filter((k) => r.remind.includes(k)) : DEFAULT_REMIND.slice();
+  return { id, title, start: r.start, time: r.time, repeat, days, remind, createdAt };
 }
 function sanitizeSubscription(s) {
   if (!s || typeof s !== "object") return null;
@@ -499,11 +509,16 @@ function occursOn(r, dn) {
   const startDn = dayOfDateStr(r.start);
   if (startDn === null || dn < startDn) return false;
   const diff = dn - startDn;
+  const days = Array.isArray(r.days) && r.days.length ? r.days : [dowOfDn(startDn)];
   switch (r.repeat) {
+    case "daily":
+      return true;
     case "weekly":
-      return diff % 7 === 0;
-    case "biweekly":
-      return diff % 14 === 0;
+      return days.includes(dowOfDn(dn));
+    case "biweekly": {
+      const weekIdx = Math.floor((dn - (startDn - dowOfDn(startDn))) / 7);
+      return weekIdx % 2 === 0 && days.includes(dowOfDn(dn));
+    }
     case "monthly":
       return new Date(dn * 864e5).getUTCDate() === new Date(startDn * 864e5).getUTCDate();
     default:
@@ -518,6 +533,7 @@ function textFor(kind, title, tm) {
   const t = fmtTime(tm);
   if (kind === "eve") return `amanh\xE3 tem ${title} \xE0s ${t}, linda`;
   if (kind === "morning") return `hoje tem ${title} \xE0s ${t}, linda. n\xE3o esquece`;
+  if (kind === "hours") return `daqui a umas 2 horas tem ${title}, \xE0s ${t}, linda`;
   return `${title} daqui a pouco, \xE0s ${t}. bora, linda?`;
 }
 function dueReminders(r, nowMin, sent) {
@@ -529,19 +545,24 @@ function dueReminders(r, nowMin, sent) {
     if (!occursOn(r, dn)) continue;
     const S = dn * 1440 + tm;
     if (nowMin >= S) continue;
-    const targets = [
-      ["eve", (dn - 1) * 1440 + EVE_AT, LATE_GRACE_MIN],
-      // se o compromisso é cedo (antes das ~10h), o lembrete das 8h30 ficaria colado no de "daqui a pouco"
-      ...S - (dn * 1440 + MORNING_AT) >= 90 ? [["morning", dn * 1440 + MORNING_AT, LATE_GRACE_MIN]] : [],
-      ["before", S - BEFORE_MIN, BEFORE_MIN]
-    ];
+    const want = (k) => (Array.isArray(r.remind) ? r.remind : DEFAULT_REMIND).includes(k);
+    const morningT = dn * 1440 + MORNING_AT;
+    const morningOk = S - morningT >= 120;
+    const hoursT = S - HOURS_BEFORE_MIN;
+    const targets = [];
+    if (want("eve")) targets.push(["eve", (dn - 1) * 1440 + EVE_AT, LATE_GRACE_MIN]);
+    if (want("morning") && morningOk) targets.push(["morning", morningT, LATE_GRACE_MIN]);
+    if (want("hours") && !(want("morning") && morningOk && Math.abs(hoursT - morningT) < 60)) {
+      targets.push(["hours", hoursT, BEFORE_MIN]);
+    }
+    if (want("before")) targets.push(["before", S - BEFORE_MIN, BEFORE_MIN]);
     for (const [kind, T, grace] of targets) {
       if (T < createdMin) continue;
       if (nowMin < T || nowMin >= T + grace) continue;
       if (nowMin >= S) continue;
       const key = `${r.id}|${dn}|${tm}|${kind}`;
       if (sent[key]) continue;
-      out.push({ key, kind, text: textFor(kind, r.title, tm), ttl: kind === "before" ? 1800 : 7200 });
+      out.push({ key, kind, text: textFor(kind, r.title, tm), ttl: kind === "before" ? 1800 : kind === "hours" ? 3600 : 7200 });
     }
   }
   return out;
@@ -616,11 +637,29 @@ function alarm(minutesBefore, description) {
     "END:VALARM"
   ];
 }
-var RRULE = {
-  weekly: "FREQ=WEEKLY",
-  biweekly: "FREQ=WEEKLY;INTERVAL=2",
-  monthly: "FREQ=MONTHLY"
-};
+var BYDAY = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+function rruleFor(r) {
+  const dayList = Array.isArray(r.days) && r.days.length ? r.days : [dowOfDn(dayOfDateStr(r.start))];
+  const days = dayList.map((d) => BYDAY[d]).join(",");
+  switch (r.repeat) {
+    case "daily":
+      return "FREQ=DAILY";
+    case "weekly":
+      return `FREQ=WEEKLY;BYDAY=${days}`;
+    case "biweekly":
+      return `FREQ=WEEKLY;INTERVAL=2;BYDAY=${days};WKST=SU`;
+    case "monthly":
+      return "FREQ=MONTHLY";
+    default:
+      return null;
+  }
+}
+function firstOccurrenceDn(r, startDn) {
+  for (let i = 0; i < 800; i++) {
+    if (occursOn(r, startDn + i)) return startDn + i;
+  }
+  return startDn;
+}
 function buildIcs(routines, nowMs = Date.now()) {
   const lines = [
     "BEGIN:VCALENDAR",
@@ -637,17 +676,20 @@ function buildIcs(routines, nowMs = Date.now()) {
     const dn = dayOfDateStr(r.start);
     const tm = minOfTimeStr(r.time);
     if (dn === null || tm === null) continue;
-    const S = dn * 1440 + tm;
+    const S = firstOccurrenceDn(r, dn) * 1440 + tm;
+    const remind = Array.isArray(r.remind) ? r.remind : DEFAULT_REMIND;
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:${r.id}@daianalife`);
     lines.push(`DTSTAMP:${stamp}`);
     lines.push(`DTSTART:${floating(S)}`);
     lines.push(`DTEND:${floating(S + 60)}`);
     lines.push(`SUMMARY:${escapeText(r.title)}`);
-    if (RRULE[r.repeat]) lines.push(`RRULE:${RRULE[r.repeat]}`);
-    lines.push(...alarm(1440 - EVE_AT + tm, `amanh\xE3: ${r.title}`));
-    if (tm - MORNING_AT >= 90) lines.push(...alarm(tm - MORNING_AT, `hoje: ${r.title}`));
-    lines.push(...alarm(ALARM_BEFORE_MIN, `daqui a pouco: ${r.title}`));
+    const rrule = rruleFor(r);
+    if (rrule) lines.push(`RRULE:${rrule}`);
+    if (remind.includes("eve")) lines.push(...alarm(1440 - EVE_AT + tm, `amanh\xE3: ${r.title}`));
+    if (remind.includes("morning") && tm - MORNING_AT >= 120) lines.push(...alarm(tm - MORNING_AT, `hoje: ${r.title}`));
+    if (remind.includes("hours")) lines.push(...alarm(HOURS_BEFORE_MIN, `daqui a umas 2 horas: ${r.title}`));
+    if (remind.includes("before")) lines.push(...alarm(ALARM_BEFORE_MIN, `daqui a pouco: ${r.title}`));
     lines.push("END:VEVENT");
   }
   lines.push("END:VCALENDAR");

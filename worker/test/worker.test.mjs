@@ -169,7 +169,8 @@ test('sanitizeRoutine', () => {
 // ---------- ICS ----------
 test('ICS: recorrência, horário flutuante, alarmes e CRLF', () => {
   const ics = buildIcs([therapy], brt('2026-10-14 12:00'));
-  assert.ok(ics.includes('\r\nRRULE:FREQ=WEEKLY;INTERVAL=2\r\n'));
+  // terapia: início quarta 21/10, quinzenal; sem `days` vale o dia da data (quarta = 3)
+  assert.ok(ics.includes('\r\nRRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=WE;WKST=SU\r\n'));
   assert.ok(ics.includes('DTSTART:20261021T140000\r\n'));
   assert.ok(ics.includes('DTEND:20261021T150000\r\n'));
   assert.ok(ics.includes('TRIGGER:-PT19H\r\n'), 'véspera 19h para evento 14h = 19h antes');
@@ -374,4 +375,90 @@ test('água: patch por endpoint atualiza só aquele aparelho', () => {
   const out = upsertSubscription(content, { endpoint: waterSub.endpoint, nextReminder: 99 });
   assert.equal(out.subscriptions[0].nextReminder, 99);
   assert.equal(out.subscriptions[1].nextReminder, 2);
+});
+
+// ---------- frequência, dias da semana e momentos de aviso ----------
+const mk = (over) => ({ id: 'x', title: 'yoga', start: '2026-10-19', time: '19:00', repeat: 'weekly', days: [1, 3], remind: ['eve', 'morning', 'before'], createdAt: brt('2026-10-01 10:00'), ...over });
+const dn = (s) => dayOfDateStr(s);
+
+test('todo dia: acontece em qualquer dia a partir do início', () => {
+  const r = mk({ repeat: 'daily' });
+  assert.ok(!occursOn(r, dn('2026-10-18')));
+  for (const d of ['2026-10-19', '2026-10-20', '2026-11-30']) assert.ok(occursOn(r, dn(d)), d);
+});
+
+test('toda semana com dias escolhidos (seg e qua)', () => {
+  const r = mk({}); // 19/10/2026 é segunda
+  assert.ok(occursOn(r, dn('2026-10-19')));   // seg
+  assert.ok(!occursOn(r, dn('2026-10-20')));  // ter
+  assert.ok(occursOn(r, dn('2026-10-21')));   // qua
+  assert.ok(occursOn(r, dn('2026-10-26')));   // seg seguinte
+  assert.ok(!occursOn(r, dn('2026-10-17')), 'antes do início não vale');
+});
+
+test('a cada 2 semanas com dias: semanas alternadas de domingo a sábado', () => {
+  const r = mk({ repeat: 'biweekly' });
+  assert.ok(occursOn(r, dn('2026-10-19')));
+  assert.ok(occursOn(r, dn('2026-10-21')));
+  assert.ok(!occursOn(r, dn('2026-10-26')), 'semana seguinte não');
+  assert.ok(!occursOn(r, dn('2026-10-28')));
+  assert.ok(occursOn(r, dn('2026-11-02')));
+  assert.ok(occursOn(r, dn('2026-11-04')));
+});
+
+test('quinzenal: data de início num dia que não está nos dias escolhidos', () => {
+  // início quarta 21/10, só segundas: 1ª segunda (26/10) está na semana seguinte (índice 1) -> não vale; vale 02/11
+  const r = mk({ repeat: 'biweekly', start: '2026-10-21', days: [1] });
+  assert.ok(!occursOn(r, dn('2026-10-26')));
+  assert.ok(occursOn(r, dn('2026-11-02')));
+  const ics = buildIcs([r]);
+  assert.ok(ics.includes('DTSTART:20261102T190000'), 'DTSTART é a 1ª ocorrência real');
+  assert.ok(ics.includes('RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO;WKST=SU'));
+});
+
+test('ICS semanal/diário', () => {
+  const w = buildIcs([mk({})]);
+  assert.ok(w.includes('RRULE:FREQ=WEEKLY;BYDAY=MO,WE'));
+  assert.ok(buildIcs([mk({ repeat: 'daily' })]).includes('RRULE:FREQ=DAILY'));
+  assert.ok(!buildIcs([mk({ repeat: 'once' })]).includes('RRULE'));
+});
+
+test('lembretes respeitam os momentos escolhidos', () => {
+  const r = mk({ repeat: 'daily', start: '2026-10-20', time: '14:00', remind: ['hours'] });
+  const kinds = (s) => dueReminders(r, nowToLocalMin(brt(s)), {}).map((x) => x.kind);
+  assert.deepEqual(kinds('2026-10-20 19:10'), []);  // sem véspera (ligada só "hours")... é a de 20/10 p/ 21/10
+  assert.deepEqual(kinds('2026-10-21 08:40'), []);  // sem manhã
+  assert.deepEqual(kinds('2026-10-21 12:10'), ['hours']);
+  assert.deepEqual(kinds('2026-10-21 13:25'), []);  // sem "um pouco antes"
+  const t = dueReminders(r, nowToLocalMin(brt('2026-10-21 12:10')), {})[0];
+  assert.equal(t.text, 'daqui a umas 2 horas tem yoga, às 14h, linda');
+});
+
+test('"horas antes" some se cair colado no aviso da manhã', () => {
+  // compromisso 10h40: 2h antes = 8h40, a 10 min do aviso das 8h30
+  const r = mk({ repeat: 'daily', start: '2026-10-20', time: '10:40', remind: ['morning', 'hours'] });
+  const kinds = [];
+  for (const t of ['08:30', '08:50', '09:10']) kinds.push(...dueReminders(r, nowToLocalMin(brt(`2026-10-21 ${t}`)), {}).map((x) => x.kind));
+  assert.deepEqual([...new Set(kinds)], ['morning']);
+});
+
+test('sem nenhum momento ligado, nada é enviado', () => {
+  const r = mk({ repeat: 'daily', remind: [] });
+  for (const t of ['2026-10-20 19:10', '2026-10-21 08:40', '2026-10-21 17:25']) {
+    assert.equal(dueReminders(r, nowToLocalMin(brt(t)), {}).length, 0);
+  }
+  assert.ok(!buildIcs([r]).includes('VALARM'));
+});
+
+test('rotina antiga (sem days/remind) continua funcionando com os padrões', () => {
+  const old = sanitizeRoutine({ id: 'o', title: 'terapia', start: '2026-10-21', time: '14:00', repeat: 'weekly' });
+  assert.deepEqual(old.days, [3]);
+  assert.deepEqual(old.remind, ['eve', 'morning', 'before']);
+});
+
+test('sanitizeRoutine filtra dias e momentos inválidos', () => {
+  const r = sanitizeRoutine({ id: 'a', title: 'x', start: '2026-10-19', time: '10:00', repeat: 'weekly', days: [1, 1, 9, 'x', 0], remind: ['eve', 'lixo', 'hours'] });
+  assert.deepEqual(r.days, [0, 1]);
+  assert.deepEqual(r.remind, ['eve', 'hours']);
+  assert.equal(sanitizeRoutine({ id: 'a', title: 'x', start: '2026-10-19', time: '10:00', repeat: 'daily', remind: [] }).remind.length, 0);
 });

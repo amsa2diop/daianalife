@@ -937,7 +937,27 @@
   }
   .field-row { display: flex; gap: 8px; }
   .field-row .field { flex: 1; min-width: 0; }
-  #routineSheet { transition: transform 0.32s cubic-bezier(.32,.72,0,1); }
+  #routineSheet {
+    transition: transform 0.32s cubic-bezier(.32,.72,0,1);
+    max-height: calc(var(--vh, 1vh) * 92);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .day-row { display: flex; gap: 6px; margin-top: 10px; }
+  .day-btn {
+    flex: 1;
+    min-height: 38px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    background: var(--sky-1);
+    color: var(--aqua-deep);
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .day-btn.active { background: var(--blush-soft); border-color: var(--blush); color: #c23b5c; }
 
   @media (prefers-reduced-motion: reduce) {
     .bubble, .wave svg { animation: none !important; }
@@ -1174,21 +1194,39 @@
   <h2 id="routineSheetTitle">Nova rotina</h2>
   <input class="field" id="routineName" type="text" maxlength="60" placeholder="ex.: terapia" autocomplete="off" autocapitalize="sentences" />
 
-  <h2>Quando</h2>
+  <h2>Frequência</h2>
+  <div class="chip-row" id="routineRepeat">
+    <div class="chip" data-repeat="once">não repete</div>
+    <div class="chip" data-repeat="daily">todo dia</div>
+    <div class="chip active" data-repeat="weekly">toda semana</div>
+    <div class="chip" data-repeat="biweekly">a cada 2 semanas</div>
+    <div class="chip" data-repeat="monthly">todo mês</div>
+  </div>
+  <div class="day-row" id="routineDays">
+    <button type="button" class="day-btn" data-day="0" aria-label="domingo">D</button>
+    <button type="button" class="day-btn" data-day="1" aria-label="segunda">S</button>
+    <button type="button" class="day-btn" data-day="2" aria-label="terça">T</button>
+    <button type="button" class="day-btn" data-day="3" aria-label="quarta">Q</button>
+    <button type="button" class="day-btn" data-day="4" aria-label="quinta">Q</button>
+    <button type="button" class="day-btn" data-day="5" aria-label="sexta">S</button>
+    <button type="button" class="day-btn" data-day="6" aria-label="sábado">S</button>
+  </div>
+
+  <h2 id="routineWhenTitle">A partir de</h2>
   <div class="field-row">
     <input class="field" id="routineDate" type="date" />
     <input class="field" id="routineTime" type="time" />
   </div>
 
-  <h2>Repete</h2>
-  <div class="chip-row" id="routineRepeat">
-    <div class="chip" data-repeat="once">só uma vez</div>
-    <div class="chip active" data-repeat="weekly">toda semana</div>
-    <div class="chip" data-repeat="biweekly">a cada 2 semanas</div>
-    <div class="chip" data-repeat="monthly">todo mês</div>
+  <h2>Avisar</h2>
+  <div class="chip-row" id="routineRemind">
+    <div class="chip active" data-remind="eve">noite anterior</div>
+    <div class="chip active" data-remind="morning">de manhã</div>
+    <div class="chip" data-remind="hours">2 horas antes</div>
+    <div class="chip active" data-remind="before">um pouco antes</div>
   </div>
 
-  <p class="fine-print" id="routineHint">Eu aviso na noite anterior, de manhã e um pouco antes.</p>
+  <p class="fine-print" id="routineHint">Toque nos momentos em que quer ser avisada.</p>
 
   <button class="sheet-close" id="routineSave">salvar</button>
   <div class="reset-row" id="routineDeleteRow">
@@ -1946,7 +1984,9 @@
   // não vê as rotinas.
   const ROUTINES_KEY = 'daianalife_routines_v1';
   const DOW_SHORT = ['dom','seg','ter','qua','qui','sex','sáb'];
-  const REPEAT_LABEL = { once: 'só uma vez', weekly: 'toda semana', biweekly: 'a cada 2 semanas', monthly: 'todo mês' };
+  const REMIND_KINDS = ['eve', 'morning', 'hours', 'before'];
+  const DEFAULT_REMIND = ['eve', 'morning', 'before'];
+  const REPEATS = ['once', 'daily', 'weekly', 'biweekly', 'monthly'];
 
   function randomHex(bytes){
     const a = new Uint8Array(bytes);
@@ -1957,7 +1997,10 @@
     let r;
     try { r = JSON.parse(localStorage.getItem(ROUTINES_KEY)); } catch(e){ r = null; }
     if(!r || typeof r !== 'object') r = {};
-    r.items = Array.isArray(r.items) ? r.items : [];
+    r.items = Array.isArray(r.items) ? r.items.map(normalizeRoutine) : [];
+    // v2: rotinas ganharam dias da semana e momentos de aviso; as antigas
+    // recebem os padrões e são reenviadas ao Worker uma vez
+    if(r.schema !== 2){ r.schema = 2; if(r.items.length) r.dirty = true; }
     if(!/^[a-f0-9]{64}$/.test(r.secret || '')) r.secret = randomHex(32);
     r.dirty = !!r.dirty;
     r.synced = !!r.synced;
@@ -1971,14 +2014,40 @@
   // --- datas (mesma lógica de recorrência do Worker) ---
   function dnOf(y, m, d){ return Math.floor(Date.UTC(y, m, d) / 86400000); }
   function dnOfStr(str){ const [y, m, d] = str.split('-').map(Number); return dnOf(y, m - 1, d); }
+  function dowOfDn(dn){ return new Date(dn * 86400000).getUTCDay(); }
+  function dowOfStr(str){ return dowOfDn(dnOfStr(str)); }
+
+  function normalizeRoutine(r){
+    const out = Object.assign({}, r);
+    if(!REPEATS.includes(out.repeat)) out.repeat = 'once';
+    let days = Array.isArray(out.days) ? out.days.filter(d => Number.isInteger(d) && d >= 0 && d <= 6) : [];
+    days = Array.from(new Set(days)).sort();
+    out.days = days.length ? days : [dowOfStr(out.start)];
+    out.remind = Array.isArray(out.remind) ? out.remind.filter(k => REMIND_KINDS.includes(k)) : DEFAULT_REMIND.slice();
+    return out;
+  }
+
+  // Semanas contam de domingo a sábado; "a cada 2 semanas" conta a
+  // partir da semana da data de início (mesma regra do calendário).
   function occursOn(r, dn){
     const startDn = dnOfStr(r.start);
     if(dn < startDn) return false;
-    const diff = dn - startDn;
-    if(r.repeat === 'weekly') return diff % 7 === 0;
-    if(r.repeat === 'biweekly') return diff % 14 === 0;
+    if(r.repeat === 'daily') return true;
+    if(r.repeat === 'weekly') return r.days.includes(dowOfDn(dn));
+    if(r.repeat === 'biweekly'){
+      const weekIdx = Math.floor((dn - (startDn - dowOfDn(startDn))) / 7);
+      return weekIdx % 2 === 0 && r.days.includes(dowOfDn(dn));
+    }
     if(r.repeat === 'monthly') return new Date(dn * 86400000).getUTCDate() === new Date(startDn * 86400000).getUTCDate();
-    return diff === 0;
+    return dn === startDn;
+  }
+  function describeFreq(r){
+    if(r.repeat === 'once') return 'não repete';
+    if(r.repeat === 'daily') return 'todo dia';
+    if(r.repeat === 'monthly') return 'todo mês';
+    if(r.repeat === 'weekly' && r.days.length === 7) return 'todo dia';
+    const every = r.repeat === 'biweekly' ? 'a cada 2 semanas' : 'toda semana';
+    return r.days.map(d => DOW_SHORT[d]).join(', ') + ' · ' + every;
   }
   function timeParts(r){ return r.time.split(':').map(Number); }
   function startDate(r){
@@ -2032,7 +2101,7 @@
     routineSyncing = true;
     try{
       const sub = await getSubJSON();
-      const sending = routines.items.map(r => ({ id: r.id, title: r.title, start: r.start, time: r.time, repeat: r.repeat, createdAt: r.createdAt || 0 }));
+      const sending = routines.items.map(r => ({ id: r.id, title: r.title, start: r.start, time: r.time, repeat: r.repeat, days: r.days, remind: r.remind, createdAt: r.createdAt || 0 }));
       const res = await fetch(PUSH_RELAY_URL + '/routines', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2089,7 +2158,7 @@
     if(!routines.items.length){
       const card = el('div', 'routine-note routine-empty');
       card.appendChild(el('h3', '', 'Nada por aqui ainda'));
-      card.appendChild(el('p', '', 'Terapia, consulta, tudo que se repete e some da cabeça. Eu te lembro.'));
+      card.appendChild(el('p', '', 'Terapia, consulta, tudo que se repete. Eu te lembro.'));
       const btn = el('button', 'notif-btn', 'criar a primeira rotina');
       btn.type = 'button';
       btn.addEventListener('click', () => openRoutineSheet(null));
@@ -2121,7 +2190,7 @@
       }
       const body = el('div', 'routine-body');
       body.appendChild(el('div', 'routine-title', r.title));
-      body.appendChild(el('div', 'routine-meta', REPEAT_LABEL[r.repeat] + ' · ' + fmtClock(r)));
+      body.appendChild(el('div', 'routine-meta', describeFreq(r) + ' · ' + fmtClock(r)));
       card.appendChild(date);
       card.appendChild(body);
       card.addEventListener('click', () => openRoutineSheet(r.id));
@@ -2182,15 +2251,42 @@
   const rDeleteRow = document.getElementById('routineDeleteRow');
   const rDeleteBtn = document.getElementById('routineDelete');
   const rRepeatChips = document.querySelectorAll('#routineRepeat .chip');
-  const HINT_DEFAULT = 'Eu aviso na noite anterior, de manhã e um pouco antes.';
+  const rRemindChips = document.querySelectorAll('#routineRemind .chip');
+  const rDayBtns = document.querySelectorAll('#routineDays .day-btn');
+  const rDaysRow = document.getElementById('routineDays');
+  const rWhenTitle = document.getElementById('routineWhenTitle');
+  const HINT_DEFAULT = 'Toque nos momentos em que quer ser avisada.';
   let editingId = null;
   let editingRepeat = 'weekly';
+  let editingDays = new Set();
+  let editingRemind = new Set();
+  let daysTouched = false;
 
+  function paintDays(){ rDayBtns.forEach(b => b.classList.toggle('active', editingDays.has(Number(b.dataset.day)))); }
+  function paintRemind(){ rRemindChips.forEach(c => c.classList.toggle('active', editingRemind.has(c.dataset.remind))); }
   function setRepeat(v){
     editingRepeat = v;
     rRepeatChips.forEach(c => c.classList.toggle('active', c.dataset.repeat === v));
+    // os dias da semana só fazem sentido em "toda semana" e "a cada 2 semanas"
+    rDaysRow.style.display = (v === 'weekly' || v === 'biweekly') ? '' : 'none';
+    rWhenTitle.textContent = v === 'once' ? 'Quando' : 'A partir de';
   }
   rRepeatChips.forEach(c => c.addEventListener('click', () => setRepeat(c.dataset.repeat)));
+  rDayBtns.forEach(b => b.addEventListener('click', () => {
+    const d = Number(b.dataset.day);
+    if(editingDays.has(d)){ if(editingDays.size > 1) editingDays.delete(d); } else { editingDays.add(d); }
+    daysTouched = true;
+    paintDays();
+  }));
+  rRemindChips.forEach(c => c.addEventListener('click', () => {
+    const k = c.dataset.remind;
+    if(editingRemind.has(k)) editingRemind.delete(k); else editingRemind.add(k);
+    paintRemind();
+  }));
+  // enquanto ela não mexe nos dias, o dia marcado acompanha a data escolhida
+  rDate.addEventListener('change', () => {
+    if(!daysTouched && rDate.value){ editingDays = new Set([dowOfStr(rDate.value)]); paintDays(); }
+  });
 
   function setHint(text, warn){
     rHint.textContent = text;
@@ -2208,6 +2304,11 @@
     rDate.value = r ? r.start : ymd(new Date());
     rTime.value = r ? r.time : '09:00';
     setRepeat(r ? r.repeat : 'weekly');
+    editingDays = new Set(r ? r.days : [dowOfStr(rDate.value)]);
+    daysTouched = !!r;
+    editingRemind = new Set(r ? r.remind : DEFAULT_REMIND);
+    paintDays();
+    paintRemind();
     rDeleteRow.style.display = r ? '' : 'none';
     rSheet.classList.add('open');
     rBackdrop.classList.add('open');
@@ -2238,24 +2339,34 @@
     const title = rName.value.replace(/\s+/g, ' ').trim();
     if(!title){ setHint('Dê um nome pra rotina.', true); rName.focus(); return; }
     if(!rDate.value || !rTime.value){ setHint('Escolha o dia e o horário.', true); return; }
-    const candidate = { start: rDate.value, time: rTime.value, repeat: editingRepeat };
+    if(!editingRemind.size){ setHint('Escolha pelo menos um momento de aviso.', true); return; }
+    // dias que ela não mexeu seguem a data escolhida (garante mesmo se o seletor de data não avisou a mudança)
+    if(!daysTouched) editingDays = new Set([dowOfStr(rDate.value)]);
+    const candidate = {
+      start: rDate.value, time: rTime.value, repeat: editingRepeat,
+      days: Array.from(editingDays).sort(), remind: REMIND_KINDS.filter(k => editingRemind.has(k))
+    };
     if(editingRepeat === 'once' && startDate(candidate) < new Date()){
       setHint('Essa data e horário já passaram.', true);
       return;
     }
     const existing = editingId ? routines.items.find(x => x.id === editingId) : null;
     if(existing){
-      const scheduleChanged = existing.start !== candidate.start || existing.time !== candidate.time || existing.repeat !== candidate.repeat;
+      const scheduleChanged = existing.start !== candidate.start || existing.time !== candidate.time ||
+        existing.repeat !== candidate.repeat || JSON.stringify(existing.days) !== JSON.stringify(candidate.days);
       existing.title = title;
       existing.start = candidate.start;
       existing.time = candidate.time;
       existing.repeat = candidate.repeat;
-      // mudou o horário: vale como rotina nova, só avisa do que ainda está por vir
+      existing.days = candidate.days;
+      existing.remind = candidate.remind;
+      // mudou quando acontece: vale como rotina nova, só avisa do que ainda está por vir
       if(scheduleChanged) existing.createdAt = Date.now();
     } else {
       routines.items.push({
         id: 'r' + Date.now().toString(36) + randomHex(3),
         title, start: candidate.start, time: candidate.time, repeat: candidate.repeat,
+        days: candidate.days, remind: candidate.remind,
         createdAt: Date.now()
       });
     }

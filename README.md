@@ -68,15 +68,18 @@ deve entrar em código, só como secret.
 ## Rotinas (aba "rotinas")
 
 Compromissos que se repetem (terapia quinzenal, algo semanal...). Ela
-cria a rotina com nome, dia, horário e repetição; o resto é automático:
+cria a rotina com nome, frequência (não repete, todo dia, toda
+semana ou a cada 2 semanas com os dias da semana escolhidos, todo
+mês), dia/horário e os momentos de aviso que quer; o resto é
+automático:
 
-1. **Push** (camada principal): o Worker avisa na noite anterior
-   (19h), de manhã (8h30) e um pouco antes (~40 min), mesmo com o app
-   fechado.
+1. **Push** (camada principal): o Worker avisa nos momentos que ela
+   escolheu: noite anterior (19h), de manhã (8h30), 2 horas antes e um
+   pouco antes (~40 min), mesmo com o app fechado.
 2. **Calendário do iPhone**: o Worker serve um calendário (`.ics`) que
    ela assina uma vez (botão "adicionar ao Calendário", via
-   `webcal://`). As rotinas novas aparecem lá sozinhas, com alertas
-   de véspera, manhã e 15 min antes.
+   `webcal://`). As rotinas novas aparecem lá sozinhas, com os
+   mesmos momentos como alertas.
 3. **Alarme do relógio do iOS**: não dá. Um app web não consegue criar
    alarmes no app Relógio. O alerta do Calendário é a alternativa.
 

@@ -5,7 +5,7 @@
 // Cada evento leva 3 alertas relativos ao início (a mesma ideia dos
 // lembretes de push: véspera, manhã e "daqui a pouco").
 
-import { dayOfDateStr, minOfTimeStr, EVE_AT, MORNING_AT, ALARM_BEFORE_MIN } from './routines.js';
+import { dayOfDateStr, minOfTimeStr, occursOn, dowOfDn, EVE_AT, MORNING_AT, HOURS_BEFORE_MIN, ALARM_BEFORE_MIN, DEFAULT_REMIND } from './routines.js';
 
 const pad = (n, w = 2) => String(n).padStart(w, '0');
 
@@ -77,11 +77,29 @@ function alarm(minutesBefore, description) {
   ];
 }
 
-const RRULE = {
-  weekly: 'FREQ=WEEKLY',
-  biweekly: 'FREQ=WEEKLY;INTERVAL=2',
-  monthly: 'FREQ=MONTHLY',
-};
+const BYDAY = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+
+function rruleFor(r) {
+  const dayList = Array.isArray(r.days) && r.days.length ? r.days : [dowOfDn(dayOfDateStr(r.start))];
+  const days = dayList.map((d) => BYDAY[d]).join(',');
+  switch (r.repeat) {
+    case 'daily': return 'FREQ=DAILY';
+    case 'weekly': return `FREQ=WEEKLY;BYDAY=${days}`;
+    case 'biweekly': return `FREQ=WEEKLY;INTERVAL=2;BYDAY=${days};WKST=SU`;
+    case 'monthly': return 'FREQ=MONTHLY';
+    default: return null;
+  }
+}
+
+// O primeiro dia em que a rotina realmente acontece (pode ser depois da
+// data de início, se ela não cair num dos dias escolhidos). O calendário
+// exige que DTSTART seja uma ocorrência válida da regra.
+function firstOccurrenceDn(r, startDn) {
+  for (let i = 0; i < 800; i++) {
+    if (occursOn(r, startDn + i)) return startDn + i;
+  }
+  return startDn;
+}
 
 export function buildIcs(routines, nowMs = Date.now()) {
   const lines = [
@@ -100,7 +118,8 @@ export function buildIcs(routines, nowMs = Date.now()) {
     const dn = dayOfDateStr(r.start);
     const tm = minOfTimeStr(r.time);
     if (dn === null || tm === null) continue;
-    const S = dn * 1440 + tm;
+    const S = firstOccurrenceDn(r, dn) * 1440 + tm;
+    const remind = Array.isArray(r.remind) ? r.remind : DEFAULT_REMIND;
 
     lines.push('BEGIN:VEVENT');
     lines.push(`UID:${r.id}@daianalife`);
@@ -108,10 +127,12 @@ export function buildIcs(routines, nowMs = Date.now()) {
     lines.push(`DTSTART:${floating(S)}`);
     lines.push(`DTEND:${floating(S + 60)}`);
     lines.push(`SUMMARY:${escapeText(r.title)}`);
-    if (RRULE[r.repeat]) lines.push(`RRULE:${RRULE[r.repeat]}`);
-    lines.push(...alarm((1440 - EVE_AT) + tm, `amanhã: ${r.title}`));                       // véspera, 19h
-    if (tm - MORNING_AT >= 90) lines.push(...alarm(tm - MORNING_AT, `hoje: ${r.title}`)); // manhã, 8h30
-    lines.push(...alarm(ALARM_BEFORE_MIN, `daqui a pouco: ${r.title}`));
+    const rrule = rruleFor(r);
+    if (rrule) lines.push(`RRULE:${rrule}`);
+    if (remind.includes('eve')) lines.push(...alarm((1440 - EVE_AT) + tm, `amanhã: ${r.title}`));                    // véspera, 19h
+    if (remind.includes('morning') && tm - MORNING_AT >= 120) lines.push(...alarm(tm - MORNING_AT, `hoje: ${r.title}`)); // manhã, 8h30
+    if (remind.includes('hours')) lines.push(...alarm(HOURS_BEFORE_MIN, `daqui a umas 2 horas: ${r.title}`));
+    if (remind.includes('before')) lines.push(...alarm(ALARM_BEFORE_MIN, `daqui a pouco: ${r.title}`));
     lines.push('END:VEVENT');
   }
 

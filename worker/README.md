@@ -65,17 +65,30 @@ Sem o KV ligado, as rotinas respondem 503 e o app mostra o aviso de
 
 ## Regras de lembrete
 
-| Quando | Texto |
-|---|---|
-| Véspera, 19h | `amanhã tem <rotina> às 14h, linda` |
-| Manhã, 8h30 (só se o compromisso for depois das ~10h) | `hoje tem <rotina> às 14h, linda. não esquece` |
-| ~40 min antes | `<rotina> daqui a pouco, às 14h. bora, linda?` |
+Cada rotina tem uma **frequência** (não repete, todo dia, toda semana
+e a cada 2 semanas com os dias da semana escolhidos, todo mês) e os
+**momentos de aviso** que ela liga:
 
+| Momento | Quando | Texto |
+|---|---|---|
+| noite anterior | 19h do dia anterior | `amanhã tem <rotina> às 14h, linda` |
+| de manhã | 8h30 (só se o compromisso for depois das 10h30) | `hoje tem <rotina> às 14h, linda. não esquece` |
+| 2 horas antes | ~2h antes | `daqui a umas 2 horas tem <rotina>, às 14h, linda` |
+| um pouco antes | ~40 min antes | `<rotina> daqui a pouco, às 14h. bora, linda?` |
+
+Padrão de uma rotina nova: noite anterior, de manhã e um pouco antes.
+Rotinas sem esses campos (versão antiga do app) recebem os padrões.
+
+- Semanas contam de domingo a sábado; "a cada 2 semanas" conta a partir
+  da semana da data de início (mesma regra no app, no cron e no .ics).
+- "2 horas antes" é descartado se cair a menos de 1h do aviso da manhã.
 - Cada lembrete sai uma vez só (mapa `sent`), mesmo com o cron rodando
   várias vezes. Falha temporária: tenta de novo na rodada seguinte.
 - Não avisa do que já tinha passado antes de a rotina ser criada.
 - Inscrição recusada pelo serviço de push (404/410) fica marcada até o
   app mandar uma nova.
+- O calendário (.ics) leva os mesmos momentos como alertas (19h da
+  véspera, 8h30, 2h antes e 15 min antes).
 
 ## Água
 
