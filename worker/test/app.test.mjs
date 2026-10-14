@@ -66,7 +66,7 @@ test('carrega sem erros, sem janela de horário, com aba Rotinas', async () => {
   assert.equal(a.$('activeFrom'), null);
   assert.ok(!a.w.document.body.textContent.includes('Notificar entre'));
   const tabs = [...a.w.document.querySelectorAll('.tab-btn')].map((b) => b.textContent.replace(/\s+/g, ' ').trim().replace(/^\d+ /, ''));
-  assert.deepEqual(tabs, ['água', 'listas', 'rotinas']);
+  assert.deepEqual(tabs, ['água', 'rotinas', 'listas']);
   a.w.document.querySelector('[data-view="viewRoutines"]').click();
   assert.ok(a.$('viewRoutines').classList.contains('active'));
   assert.match(a.$('routinesScroll').textContent, /Nada por aqui ainda/);

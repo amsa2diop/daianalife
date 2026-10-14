@@ -1,4 +1,4 @@
-const CACHE = 'daianalife-v3';
+const CACHE = 'daianalife-v4';
 const ASSETS = [
   './manifest.json',
   './icons/icon-192.png',
@@ -31,8 +31,11 @@ self.addEventListener('fetch', (e) => {
   const isNetworkFirst = NETWORK_FIRST.some(name => e.request.url.includes(name)) || e.request.mode === 'navigate';
 
   if(isNetworkFirst){
+    // cache: 'no-cache' força o navegador a revalidar no servidor. Sem
+    // isso, o cache HTTP do GitHub Pages (~10 min) podia entregar uma
+    // versão velha do app mesmo estando online.
     e.respondWith(
-      fetch(e.request)
+      fetch(new Request(e.request.url, { cache: 'no-cache' }))
         .then((res) => {
           const copy = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, copy));
