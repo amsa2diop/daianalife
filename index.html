@@ -421,6 +421,9 @@
     transition: transform 0.32s cubic-bezier(.32,.72,0,1);
   }
   .sheet.open { transform: translateY(0); }
+  /* fechada, a bandeja fica logo abaixo da tela, mas a sombra dela
+     "vazaria" pra cima e escureceria a barra de abas */
+  .sheet:not(.open) { box-shadow: none; }
 
   .sheet-handle { width: 38px; height: 4px; background: #dcedf1; border-radius: 3px; margin: 8px auto 14px; }
 
@@ -447,24 +450,6 @@
   }
   .chip.active { background: var(--blush-soft); border-color: var(--blush); color: #c23b5c; }
 
-  .hours-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--aqua-deep);
-    font-weight: 600;
-  }
-  .hour-select {
-    background: var(--sky-1);
-    color: var(--aqua-deep);
-    border: none;
-    border-radius: 10px;
-    padding: 8px 10px;
-    font-family: 'Quicksand', sans-serif;
-    font-weight: 700;
-    font-size: 13px;
-  }
   .notif-row {
     display: flex;
     align-items: center;
@@ -848,6 +833,112 @@
   .cal-day.nodata { background: transparent; color: #d8e8ee; }
   .cal-day.future { background: transparent; color: #e7f3f6; }
 
+  /* ABA DE ROTINAS — compromissos que se repetem (terapia, etc.).
+     Cada rotina é um cartão branco (mesmo raio/sombra do .card); tocar
+     abre a bandeja de edição. O bloco da esquerda mostra a PRÓXIMA
+     data; vira rosa quando é hoje ou amanhã. */
+  .routines-scroll {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 2px 0 10px;
+  }
+  .routine-card {
+    width: 100%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--foam);
+    border: none;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 12px 16px 12px 12px;
+    text-align: left;
+    font-family: 'Quicksand', sans-serif;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .routine-card:active { transform: scale(0.985); }
+  .routine-date {
+    flex-shrink: 0;
+    width: 60px;
+    text-align: center;
+    background: var(--sky-1);
+    border-radius: 14px;
+    padding: 7px 0 8px;
+    color: var(--aqua-deep);
+  }
+  .routine-date .dow { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; opacity: 0.8; }
+  .routine-date .day { font-family: 'Fraunces', serif; font-size: 21px; font-weight: 600; line-height: 1.1; }
+  .routine-date.soon { background: var(--blush-soft); color: #c23b5c; }
+  .routine-date.soon .day { font-size: 14px; padding-top: 4px; }
+  .routine-body { flex: 1; min-width: 0; }
+  .routine-title {
+    font-family: 'Fraunces', serif;
+    font-size: 16.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .routine-meta { font-size: 12px; color: var(--aqua-deep); opacity: 0.85; margin-top: 3px; font-weight: 600; }
+
+  .routine-note {
+    flex-shrink: 0;
+    background: var(--foam);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 14px 16px;
+  }
+  .routine-note h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 14.5px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    color: var(--ink);
+  }
+  .routine-note p { margin: 0 0 10px; font-size: 12.5px; line-height: 1.45; color: var(--aqua-deep); }
+  .routine-note .actions { display: flex; align-items: center; gap: 14px; }
+  .routine-note a.notif-btn { display: inline-block; text-decoration: none; }
+  .link-btn {
+    border: none;
+    background: none;
+    color: var(--aqua-deep);
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 12.5px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .routine-empty { text-align: center; padding: 22px 18px; }
+  .routine-empty p { margin-bottom: 14px; }
+  .routine-warn { color: #c2495f; }
+
+  .field {
+    width: 100%;
+    min-height: 44px;
+    background: var(--sky-1);
+    color: var(--ink);
+    border: none;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 16px; /* 16px evita o zoom automático do iOS ao focar */
+    outline: none;
+  }
+  .field-row { display: flex; gap: 8px; }
+  .field-row .field { flex: 1; min-width: 0; }
+  #routineSheet { transition: transform 0.32s cubic-bezier(.32,.72,0,1); }
+
   @media (prefers-reduced-motion: reduce) {
     .bubble, .wave svg { animation: none !important; }
   }
@@ -881,9 +972,10 @@
     </div>
     <h2>Como funciona</h2>
     <ul class="tour-list">
-      <li>Toca em <strong>"Bebi um copo!"</strong> toda vez que beber água</li>
+      <li>Toque em <strong>"Bebi um copo!"</strong> toda vez que beber água</li>
       <li>As <strong>pílulas</strong> acima da foto mostram seus dias hidratada e a média da semana — toque nelas pra ver o gráfico e o calendário</li>
       <li>A aba <strong>"listas"</strong>, embaixo, guarda compras e afazeres</li>
+      <li>A aba <strong>"rotinas"</strong> te avisa dos compromissos que se repetem, como terapia</li>
       <li>A <strong>engrenagem</strong>, no topo, muda intervalo, meta e notificações</li>
     </ul>
     <button class="install-close" id="tourActivate">ativar notificações agora</button>
@@ -1010,6 +1102,19 @@
   </div>
 </div>
 
+<div class="view" id="viewRoutines">
+  <div class="lists-header">
+    <div>
+      <div class="eyebrow">pra nunca mais esquecer</div>
+      <h1>Minhas<span>Rotinas</span></h1>
+    </div>
+    <button class="gear-btn" id="routineAddBtn" aria-label="Nova rotina">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </div>
+  <div class="routines-scroll" id="routinesScroll"></div>
+</div>
+
 </div>
 
 <nav class="tabbar">
@@ -1023,6 +1128,10 @@
       <span class="tab-badge" id="listsBadge">0</span>
     </span>
     listas
+  </button>
+  <button class="tab-btn" data-view="viewRoutines">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>
+    rotinas
   </button>
 </nav>
 </div>
@@ -1046,13 +1155,6 @@
     <div class="chip" data-goal="12">12</div>
   </div>
 
-  <h2>Notificar entre</h2>
-  <div class="hours-row">
-    <select id="activeFrom" class="hour-select"></select>
-    <span>até</span>
-    <select id="activeTo" class="hour-select"></select>
-  </div>
-
   <div class="notif-row">
     <p id="notifText">Ativa as notificações pra eu te lembrar, mesmo com o app fechado</p>
     <button class="notif-btn" id="notifBtn">ativar</button>
@@ -1064,6 +1166,34 @@
   </div>
 
   <button class="sheet-close" id="sheetClose">pronto</button>
+</div>
+
+<div class="sheet-backdrop" id="routineBackdrop"></div>
+<div class="sheet" id="routineSheet">
+  <div class="sheet-handle"></div>
+  <h2 id="routineSheetTitle">Nova rotina</h2>
+  <input class="field" id="routineName" type="text" maxlength="60" placeholder="ex.: terapia" autocomplete="off" autocapitalize="sentences" />
+
+  <h2>Quando</h2>
+  <div class="field-row">
+    <input class="field" id="routineDate" type="date" />
+    <input class="field" id="routineTime" type="time" />
+  </div>
+
+  <h2>Repete</h2>
+  <div class="chip-row" id="routineRepeat">
+    <div class="chip" data-repeat="once">só uma vez</div>
+    <div class="chip active" data-repeat="weekly">toda semana</div>
+    <div class="chip" data-repeat="biweekly">a cada 2 semanas</div>
+    <div class="chip" data-repeat="monthly">todo mês</div>
+  </div>
+
+  <p class="fine-print" id="routineHint">Eu aviso na noite anterior, de manhã e um pouco antes.</p>
+
+  <button class="sheet-close" id="routineSave">salvar</button>
+  <div class="reset-row" id="routineDeleteRow">
+    <button class="reset-btn" id="routineDelete">apagar rotina</button>
+  </div>
 </div>
 
 <script>
@@ -1182,8 +1312,6 @@
     s.interval = s.interval ?? 60;
     s.pushSynced = s.pushSynced ?? false;
     s.myEndpoint = s.myEndpoint ?? null;
-    s.activeFrom = s.activeFrom ?? 8;
-    s.activeTo = s.activeTo ?? 24;
     s.nextReminder = s.nextReminder ?? (Date.now() + s.interval*60000);
     if(!s.week || s.week.key !== weekKey()){
       s.week = { key: weekKey(), days: {} };
@@ -1208,8 +1336,6 @@
     goal: document.getElementById('statGoal'),
     weekAvg: document.getElementById('chipWeekAvg'),
     pillStreak: document.getElementById('pillStreak'),
-    activeFrom: document.getElementById('activeFrom'),
-    activeTo: document.getElementById('activeTo'),
     pillWeekAvg: document.getElementById('pillWeekAvg'),
     chartOverlay: document.getElementById('chartOverlay'),
     chartSub: document.getElementById('chartSub'),
@@ -1408,44 +1534,6 @@
     });
   });
 
-  // MODO SONO — os dois <select> de hora. activeFrom vai de 0 a 23;
-  // activeTo vai de 1 a 24, onde 24 representa meia-noite (fim do
-  // dia) — assim dá pra escolher "das 8h até meia-noite" sem
-  // ambiguidade com "das 8h até 0h" (que pareceria durar 0 minutos).
-  function hourLabel(h){
-    const shown = h === 24 ? 0 : h;
-    return String(shown).padStart(2, '0') + ':00';
-  }
-  function fillHourSelect(select, min, max){
-    select.innerHTML = '';
-    for(let h = min; h <= max; h++){
-      const opt = document.createElement('option');
-      opt.value = h;
-      opt.textContent = hourLabel(h);
-      select.appendChild(opt);
-    }
-  }
-  fillHourSelect(els.activeFrom, 0, 23);
-  fillHourSelect(els.activeTo, 1, 24);
-  els.activeFrom.value = state.activeFrom;
-  els.activeTo.value = state.activeTo;
-
-  function syncActiveHours(){
-    if(state.pushSynced && state.myEndpoint){
-      syncRemote({ endpoint: state.myEndpoint, activeFrom: state.activeFrom, activeTo: state.activeTo }).catch(()=>{});
-    }
-  }
-  els.activeFrom.addEventListener('change', () => {
-    state.activeFrom = Number(els.activeFrom.value);
-    save();
-    syncActiveHours();
-  });
-  els.activeTo.addEventListener('change', () => {
-    state.activeTo = Number(els.activeTo.value);
-    save();
-    syncActiveHours();
-  });
-
   function openSheet(){
     els.sheet.classList.add('open');
     els.sheetBackdrop.classList.add('open');
@@ -1586,13 +1674,12 @@
         subscription: sub.toJSON(),
         interval: state.interval,
         nextReminder: Date.now() + state.interval * 60000,
-        lastSeen: Date.now(),
-        activeFrom: state.activeFrom,
-        activeTo: state.activeTo
+        lastSeen: Date.now()
       });
       state.pushSynced = true;
       state.myEndpoint = sub.endpoint;
       save();
+      if(routines.items.length){ routines.dirty = true; saveRoutines(); syncRoutines(); } else { renderRoutines(); }
       els.notifText.textContent = 'Prontinho — notificação ativada.';
       updateNotifBtn();
     }catch(err){
@@ -1636,6 +1723,7 @@
     btn.addEventListener('click', () => {
       tabBtns.forEach(b => b.classList.toggle('active', b === btn));
       document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === btn.dataset.view));
+      if(btn.dataset.view === 'viewRoutines') renderRoutines();
     });
   });
 
@@ -1844,20 +1932,381 @@
     bubbleContainer.appendChild(b);
   }
 
+  // ROTINAS — compromissos que se repetem (terapia quinzenal etc.).
+  //
+  // As rotinas ficam no localStorage (chave própria: "zerar o app" não
+  // apaga) e são espelhadas no Worker (KV privado), que é quem manda os
+  // lembretes de push com o app fechado: noite anterior, manhã e um
+  // pouco antes. O mesmo Worker serve um calendário (.ics) que o iPhone
+  // assina uma vez e passa a mostrar as rotinas no app Calendário.
+  //
+  // Privacidade: nada disso vai pro repositório público. O servidor
+  // identifica o aparelho por um segredo aleatório gerado aqui, que
+  // também faz parte do endereço do calendário — quem não tem o link
+  // não vê as rotinas.
+  const ROUTINES_KEY = 'daianalife_routines_v1';
+  const DOW_SHORT = ['dom','seg','ter','qua','qui','sex','sáb'];
+  const REPEAT_LABEL = { once: 'só uma vez', weekly: 'toda semana', biweekly: 'a cada 2 semanas', monthly: 'todo mês' };
+
+  function randomHex(bytes){
+    const a = new Uint8Array(bytes);
+    crypto.getRandomValues(a);
+    return Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
+  }
+  function loadRoutines(){
+    let r;
+    try { r = JSON.parse(localStorage.getItem(ROUTINES_KEY)); } catch(e){ r = null; }
+    if(!r || typeof r !== 'object') r = {};
+    r.items = Array.isArray(r.items) ? r.items : [];
+    if(!/^[a-f0-9]{64}$/.test(r.secret || '')) r.secret = randomHex(32);
+    r.dirty = !!r.dirty;
+    r.synced = !!r.synced;
+    r.syncedEndpoint = r.syncedEndpoint || null;
+    return r;
+  }
+  let routines = loadRoutines();
+  function saveRoutines(){ try { localStorage.setItem(ROUTINES_KEY, JSON.stringify(routines)); } catch(e){} }
+  saveRoutines();
+
+  // --- datas (mesma lógica de recorrência do Worker) ---
+  function dnOf(y, m, d){ return Math.floor(Date.UTC(y, m, d) / 86400000); }
+  function dnOfStr(str){ const [y, m, d] = str.split('-').map(Number); return dnOf(y, m - 1, d); }
+  function occursOn(r, dn){
+    const startDn = dnOfStr(r.start);
+    if(dn < startDn) return false;
+    const diff = dn - startDn;
+    if(r.repeat === 'weekly') return diff % 7 === 0;
+    if(r.repeat === 'biweekly') return diff % 14 === 0;
+    if(r.repeat === 'monthly') return new Date(dn * 86400000).getUTCDate() === new Date(startDn * 86400000).getUTCDate();
+    return diff === 0;
+  }
+  function timeParts(r){ return r.time.split(':').map(Number); }
+  function startDate(r){
+    const [y, m, d] = r.start.split('-').map(Number);
+    const [hh, mm] = timeParts(r);
+    return new Date(y, m - 1, d, hh, mm);
+  }
+  function nextOccurrence(r, from){
+    if(r.repeat === 'once'){ const w = startDate(r); return w >= from ? w : null; }
+    const [hh, mm] = timeParts(r);
+    for(let i = 0; i < 800; i++){
+      const day = new Date(from.getFullYear(), from.getMonth(), from.getDate() + i);
+      if(!occursOn(r, dnOf(day.getFullYear(), day.getMonth(), day.getDate()))) continue;
+      const when = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hh, mm);
+      if(when >= from) return when;
+    }
+    return null;
+  }
+  function fmtClock(r){
+    const [hh, mm] = timeParts(r);
+    return mm ? hh + 'h' + String(mm).padStart(2, '0') : hh + 'h';
+  }
+  function ymd(d){
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // Rotina de uma vez só que passou há mais de um dia some sozinha.
+  function cleanupRoutines(){
+    const limit = Date.now() - 24 * 3600 * 1000;
+    const before = routines.items.length;
+    routines.items = routines.items.filter(r => r.repeat !== 'once' || startDate(r).getTime() > limit);
+    if(routines.items.length !== before){ routines.dirty = true; saveRoutines(); }
+  }
+
+  // --- sincronia com o Worker ---
+  async function getSubJSON(){
+    try{
+      if(!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
+      ]);
+      const sub = await reg.pushManager.getSubscription();
+      return sub ? sub.toJSON() : null;
+    }catch(e){ return null; }
+  }
+
+  let routineSyncing = false;
+  async function syncRoutines(){
+    if(routineSyncing) return;
+    routineSyncing = true;
+    try{
+      const sub = await getSubJSON();
+      const sending = routines.items.map(r => ({ id: r.id, title: r.title, start: r.start, time: r.time, repeat: r.repeat, createdAt: r.createdAt || 0 }));
+      const res = await fetch(PUSH_RELAY_URL + '/routines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: routines.secret, routines: sending, subscription: sub })
+      });
+      let body = null;
+      try{ body = await res.json(); }catch(e){}
+      if(!res.ok || (body && body.ok === false)) throw new Error('worker ' + res.status);
+      routines.dirty = false;
+      routines.synced = true;
+      routines.syncedEndpoint = sub ? sub.endpoint : null;
+      saveRoutines();
+    }catch(err){
+      routines.dirty = true;
+      saveRoutines();
+    }finally{
+      routineSyncing = false;
+      renderRoutines();
+    }
+  }
+  async function maybeSyncRoutines(){
+    if(!routines.items.length && !routines.dirty && !routines.synced) return;
+    if(routines.dirty) return syncRoutines();
+    const sub = await getSubJSON();
+    if((sub ? sub.endpoint : null) !== routines.syncedEndpoint) return syncRoutines();
+  }
+  window.addEventListener('online', maybeSyncRoutines);
+
+  // --- tela ---
+  const routinesScroll = document.getElementById('routinesScroll');
+  function el(tag, cls, text){
+    const n = document.createElement(tag);
+    if(cls) n.className = cls;
+    if(text !== undefined) n.textContent = text;
+    return n;
+  }
+  function pushIsOn(){
+    return ('Notification' in window) && Notification.permission === 'granted' && state.pushSynced;
+  }
+  function calendarUrls(){
+    const host = PUSH_RELAY_URL.replace(/^https?:\/\//, '');
+    const path = '/cal/' + routines.secret + '.ics';
+    return { webcal: 'webcal://' + host + path, https: 'https://' + host + path };
+  }
+
+  function renderRoutines(){
+    cleanupRoutines();
+    routinesScroll.innerHTML = '';
+    const now = new Date();
+    const todayKey = ymd(now);
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const tomorrowKey = ymd(tomorrow);
+
+    if(!routines.items.length){
+      const card = el('div', 'routine-note routine-empty');
+      card.appendChild(el('h3', '', 'Nada por aqui ainda'));
+      card.appendChild(el('p', '', 'Terapia, consulta, tudo que se repete e some da cabeça. Eu te lembro.'));
+      const btn = el('button', 'notif-btn', 'criar a primeira rotina');
+      btn.type = 'button';
+      btn.addEventListener('click', () => openRoutineSheet(null));
+      card.appendChild(btn);
+      routinesScroll.appendChild(card);
+    }
+
+    const rows = routines.items
+      .map(r => ({ r, next: nextOccurrence(r, now) }))
+      .sort((a, b) => (a.next ? a.next.getTime() : Infinity) - (b.next ? b.next.getTime() : Infinity));
+
+    rows.forEach(({ r, next }) => {
+      const card = el('button', 'routine-card');
+      card.type = 'button';
+      const date = el('div', 'routine-date');
+      if(next){
+        const key = ymd(next);
+        if(key === todayKey || key === tomorrowKey){
+          date.classList.add('soon');
+          date.appendChild(el('div', 'dow', DOW_SHORT[next.getDay()]));
+          date.appendChild(el('div', 'day', key === todayKey ? 'hoje' : 'amanhã'));
+        } else {
+          date.appendChild(el('div', 'dow', DOW_SHORT[next.getDay()]));
+          date.appendChild(el('div', 'day', String(next.getDate())));
+        }
+      } else {
+        date.appendChild(el('div', 'dow', '—'));
+        date.appendChild(el('div', 'day', '·'));
+      }
+      const body = el('div', 'routine-body');
+      body.appendChild(el('div', 'routine-title', r.title));
+      body.appendChild(el('div', 'routine-meta', REPEAT_LABEL[r.repeat] + ' · ' + fmtClock(r)));
+      card.appendChild(date);
+      card.appendChild(body);
+      card.addEventListener('click', () => openRoutineSheet(r.id));
+      routinesScroll.appendChild(card);
+    });
+
+    if(routines.items.length && !pushIsOn()){
+      const note = el('div', 'routine-note');
+      note.appendChild(el('h3', '', 'Falta ativar os avisos'));
+      note.appendChild(el('p', '', 'Pra eu te avisar com o app fechado, é preciso ativar as notificações.'));
+      const btn = el('button', 'notif-btn', 'ativar agora');
+      btn.type = 'button';
+      btn.addEventListener('click', openSheet);
+      note.appendChild(btn);
+      routinesScroll.appendChild(note);
+    }
+
+    if(routines.items.length && routines.dirty){
+      const note = el('div', 'routine-note');
+      note.appendChild(el('p', 'routine-warn', 'Não consegui salvar no servidor. Tento de novo quando você abrir o app com internet.'));
+      note.lastChild.style.marginBottom = '0';
+      routinesScroll.appendChild(note);
+    }
+
+    if(routines.items.length && routines.synced && !routines.dirty){
+      const { webcal, https } = calendarUrls();
+      const note = el('div', 'routine-note');
+      note.appendChild(el('h3', '', 'No Calendário do iPhone'));
+      note.appendChild(el('p', '', 'Assine uma vez e as rotinas aparecem lá sozinhas, inclusive as novas.'));
+      const actions = el('div', 'actions');
+      const a = el('a', 'notif-btn', 'adicionar ao Calendário');
+      a.href = webcal;
+      const copy = el('button', 'link-btn', 'copiar link');
+      copy.type = 'button';
+      copy.addEventListener('click', async () => {
+        try{
+          await navigator.clipboard.writeText(https);
+          copy.textContent = 'copiado';
+        }catch(e){
+          copy.textContent = 'não deu pra copiar';
+        }
+        setTimeout(() => { copy.textContent = 'copiar link'; }, 2500);
+      });
+      actions.appendChild(a);
+      actions.appendChild(copy);
+      note.appendChild(actions);
+      routinesScroll.appendChild(note);
+    }
+  }
+
+  // --- bandeja de criar/editar ---
+  const rSheet = document.getElementById('routineSheet');
+  const rBackdrop = document.getElementById('routineBackdrop');
+  const rName = document.getElementById('routineName');
+  const rDate = document.getElementById('routineDate');
+  const rTime = document.getElementById('routineTime');
+  const rHint = document.getElementById('routineHint');
+  const rDeleteRow = document.getElementById('routineDeleteRow');
+  const rDeleteBtn = document.getElementById('routineDelete');
+  const rRepeatChips = document.querySelectorAll('#routineRepeat .chip');
+  const HINT_DEFAULT = 'Eu aviso na noite anterior, de manhã e um pouco antes.';
+  let editingId = null;
+  let editingRepeat = 'weekly';
+
+  function setRepeat(v){
+    editingRepeat = v;
+    rRepeatChips.forEach(c => c.classList.toggle('active', c.dataset.repeat === v));
+  }
+  rRepeatChips.forEach(c => c.addEventListener('click', () => setRepeat(c.dataset.repeat)));
+
+  function setHint(text, warn){
+    rHint.textContent = text;
+    rHint.classList.toggle('routine-warn', !!warn);
+  }
+
+  function openRoutineSheet(id){
+    editingId = id;
+    deleteArmed = false;
+    rDeleteBtn.textContent = 'apagar rotina';
+    setHint(HINT_DEFAULT, false);
+    const r = id ? routines.items.find(x => x.id === id) : null;
+    document.getElementById('routineSheetTitle').textContent = r ? 'Editar rotina' : 'Nova rotina';
+    rName.value = r ? r.title : '';
+    rDate.value = r ? r.start : ymd(new Date());
+    rTime.value = r ? r.time : '09:00';
+    setRepeat(r ? r.repeat : 'weekly');
+    rDeleteRow.style.display = r ? '' : 'none';
+    rSheet.classList.add('open');
+    rBackdrop.classList.add('open');
+  }
+  function closeRoutineSheet(){
+    rSheet.classList.remove('open');
+    rBackdrop.classList.remove('open');
+    rSheet.style.bottom = '';
+    document.activeElement && document.activeElement.blur && document.activeElement.blur();
+  }
+  rBackdrop.addEventListener('click', closeRoutineSheet);
+  document.getElementById('routineAddBtn').addEventListener('click', () => openRoutineSheet(null));
+
+  // O teclado do iOS não encolhe a tela, só cobre: sobe a bandeja pelo
+  // tamanho que o teclado ocupa pra o campo de nome não ficar escondido.
+  if(window.visualViewport){
+    const lift = () => {
+      if(!rSheet.classList.contains('open')){ return; }
+      const vv = window.visualViewport;
+      const off = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      rSheet.style.bottom = off ? off + 'px' : '';
+    };
+    window.visualViewport.addEventListener('resize', lift);
+    window.visualViewport.addEventListener('scroll', lift);
+  }
+
+  document.getElementById('routineSave').addEventListener('click', () => {
+    const title = rName.value.replace(/\s+/g, ' ').trim();
+    if(!title){ setHint('Dê um nome pra rotina.', true); rName.focus(); return; }
+    if(!rDate.value || !rTime.value){ setHint('Escolha o dia e o horário.', true); return; }
+    const candidate = { start: rDate.value, time: rTime.value, repeat: editingRepeat };
+    if(editingRepeat === 'once' && startDate(candidate) < new Date()){
+      setHint('Essa data e horário já passaram.', true);
+      return;
+    }
+    const existing = editingId ? routines.items.find(x => x.id === editingId) : null;
+    if(existing){
+      const scheduleChanged = existing.start !== candidate.start || existing.time !== candidate.time || existing.repeat !== candidate.repeat;
+      existing.title = title;
+      existing.start = candidate.start;
+      existing.time = candidate.time;
+      existing.repeat = candidate.repeat;
+      // mudou o horário: vale como rotina nova, só avisa do que ainda está por vir
+      if(scheduleChanged) existing.createdAt = Date.now();
+    } else {
+      routines.items.push({
+        id: 'r' + Date.now().toString(36) + randomHex(3),
+        title, start: candidate.start, time: candidate.time, repeat: candidate.repeat,
+        createdAt: Date.now()
+      });
+    }
+    routines.dirty = true;
+    saveRoutines();
+    closeRoutineSheet();
+    renderRoutines();
+    syncRoutines();
+  });
+
+  let deleteArmed = false;
+  let deleteTimer = null;
+  rDeleteBtn.addEventListener('click', () => {
+    if(!deleteArmed){
+      deleteArmed = true;
+      rDeleteBtn.textContent = 'toque de novo pra confirmar';
+      deleteTimer = setTimeout(() => { deleteArmed = false; rDeleteBtn.textContent = 'apagar rotina'; }, 3000);
+      return;
+    }
+    clearTimeout(deleteTimer);
+    deleteArmed = false;
+    routines.items = routines.items.filter(x => x.id !== editingId);
+    routines.dirty = true;
+    saveRoutines();
+    closeRoutineSheet();
+    renderRoutines();
+    syncRoutines();
+  });
+
   render();
   updateNotifBtn();
   randomMessage();
+  renderRoutines();
+  maybeSyncRoutines();
   tick();
   setInterval(tick, 1000);
 
   // Avisa o Worker que esse aparelho ainda está em uso, no máximo uma
-  // vez por dia — é o que permite parar de notificar sozinho um
-  // aparelho que ela trocou ou parou de usar (ver README do worker).
-  const LAST_SEEN_PING_KEY = 'daianalife_last_seen_ping';
+  // vez a cada 20h. Manda a inscrição junto: se o Worker tiver apagado
+  // este aparelho da lista (inatividade, erro antigo), a entrada é
+  // recriada sozinha, sem ela precisar tocar em "ativar" de novo.
+  const LAST_SEEN_PING_KEY = 'daianalife_last_seen_ping_v2';
   if(state.pushSynced && state.myEndpoint){
     const lastPing = Number(localStorage.getItem(LAST_SEEN_PING_KEY) || 0);
     if(Date.now() - lastPing > 20*60*60*1000){
-      syncRemote({ endpoint: state.myEndpoint, lastSeen: Date.now() })
+      getSubJSON().then(sub => {
+        const patch = sub
+          ? { subscription: sub, interval: state.interval, lastSeen: Date.now() }
+          : { endpoint: state.myEndpoint, lastSeen: Date.now() };
+        return syncRemote(patch);
+      })
         .then(() => localStorage.setItem(LAST_SEEN_PING_KEY, String(Date.now())))
         .catch(() => {});
     }

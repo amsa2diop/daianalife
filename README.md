@@ -3,10 +3,12 @@
 App web (PWA) de lembrete de água, feito pra Daiana. Deploy em
 https://amsa2diop.github.io/daianalife/
 
-Sem conta de usuário, sem banco de dados de verdade — o progresso do
-dia (copos, listas, preferências) fica no `localStorage` do aparelho
-dela. A única coisa que sai do aparelho é a inscrição de notificação
-push, guardada em `data/subscription.json` neste repositório.
+Sem conta de usuário — o progresso do dia (copos, listas,
+preferências) fica no `localStorage` do aparelho dela. O que sai do
+aparelho: a inscrição de notificação push da água (em
+`data/subscription.json`, neste repositório) e as **rotinas**
+(compromissos que se repetem), que ficam num KV privado da Cloudflare,
+nunca neste repositório público.
 
 ## Estrutura
 
@@ -16,14 +18,14 @@ daianalife/
 ├── manifest.json         metadados do PWA (nome, ícones, cor do tema)
 ├── sw.js                 service worker: cache offline + recebe o push
 ├── icons/                ícone em vários tamanhos (32 a 512px)
-└── data/
-    ├── messages.json       banco de frases dos lembretes
-    └── subscription.json   inscrição de push + próximo horário
+├── data/
+│   ├── messages.json       banco de frases dos lembretes
+│   └── subscription.json   inscrição de push + próximo horário
+└── worker/               código-fonte do Cloudflare Worker (ver worker/README.md)
+    ├── src/                código
+    ├── test/               testes (`npm test`)
+    └── dist/worker.js      versão pronta pra colar no painel da Cloudflare
 ```
-
-O Cloudflare Worker que manda os lembretes de verdade vive num
-projeto separado (`daianalife-worker/`, fora deste repositório) —
-ver seção abaixo.
 
 ## Como o push de verdade funciona
 
@@ -63,9 +65,34 @@ A chave pública VAPID também está hardcoded no `index.html`
 (`VAPID_PUBLIC_KEY`) — sem problema ela ser pública. A privada NUNCA
 deve entrar em código, só como secret.
 
+## Rotinas (aba "rotinas")
+
+Compromissos que se repetem (terapia quinzenal, algo semanal...). Ela
+cria a rotina com nome, dia, horário e repetição; o resto é automático:
+
+1. **Push** (camada principal): o Worker avisa na noite anterior
+   (19h), de manhã (8h30) e um pouco antes (~40 min), mesmo com o app
+   fechado.
+2. **Calendário do iPhone**: o Worker serve um calendário (`.ics`) que
+   ela assina uma vez (botão "adicionar ao Calendário", via
+   `webcal://`). As rotinas novas aparecem lá sozinhas, com alertas
+   de véspera, manhã e 15 min antes.
+3. **Alarme do relógio do iOS**: não dá. Um app web não consegue criar
+   alarmes no app Relógio. O alerta do Calendário é a alternativa.
+
+Privacidade: as rotinas ficam no KV do Worker, numa chave derivada de
+um segredo aleatório gerado no aparelho (o mesmo segredo vai no
+endereço do calendário). Sem o segredo, ninguém lê nem escreve. Os
+logs do Worker só têm contagens, nunca títulos.
+
 ### Limitações honestas
-- Precisão de alguns minutos (intervalo do Cron Trigger escolhido),
-  não é no segundo exato.
+- Precisão de alguns minutos (intervalo do Cron Trigger escolhido, 20
+  min), não é no segundo exato.
+- Sem janela de silêncio: o lembrete de água insiste a cada rodada do
+  cron até ela tocar em "Bebi um copo!". À noite, quem silencia é o
+  Foco/Não Perturbe do próprio iPhone.
+- Horários das rotinas assumem o fuso do Brasil (UTC-3, sem horário de
+  verão) nos lembretes de push.
 - O intervalo real do lembrete (o que ela escolhe no app) só chega
   até o Worker/GitHub quando ela muda a configuração ou toca "Bebi
   um copo!" com notificação já ativada (é nesse momento que o app
